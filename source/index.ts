@@ -1,14 +1,16 @@
-import "reflect-metadata";
 import "dotenv/config";
+import "reflect-metadata";
 
-import Container from "typedi";
 import fs from "fs/promises";
+import Container from "typedi";
 import { Intents } from "discord.js";
 import { Client as ClientX, ClientOptions as ClientXOptions, DIService } from "discordx";
 import { Option } from "oxide.ts";
 import { resolve } from "path";
 import { Logger } from "tslog";
 
+import { locales, namespaces } from "./locales/i18n-util";
+import { loadNamespaceAsync } from "./locales/i18n-util.async";
 import type { Callback } from "./types";
 
 async function main(): Promise<void> {
@@ -17,6 +19,17 @@ async function main(): Promise<void> {
   });
 
   Container.set(Logger, logger);
+
+  // Preload namespaces for all locales.
+  await Promise.all(
+    locales.map(async locale => {
+      await Promise.all(
+        namespaces.map(async namespace => await loadNamespaceAsync(locale, namespace))
+      );
+    })
+  );
+
+  logger.info("Loaded all namespaces for all locales.");
 
   await startDiscordClient();
 }

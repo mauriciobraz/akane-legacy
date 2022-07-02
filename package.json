@@ -4,10 +4,11 @@
   "main": "build/index.js",
   "license": "MIT",
   "scripts": {
-    "prepare": "[ -f .env ] || cp .env.example .env",
+    "prepare": "[ -f .env ] || cp .env.example .env && typesafe-i18n --no-watch",
     "build": "tsc",
     "start": "node build/index.ts",
-    "dev": "tsnd --respawn --transpile-only --ignore-watch build/ source/index.ts"
+    "dev": "tsnd --respawn --transpile-only --ignore-watch build/ source/index.ts",
+    "typesafe-i18n": "typesafe-i18n"
   },
   "devDependencies": {
     "@types/node": "^18.0.0",
@@ -24,6 +25,7 @@
     "reflect-metadata": "^0.1.13",
     "tslib": "^2.4.0",
     "tslog": "^3.3.3",
-    "typedi": "^0.10.0"
+    "typedi": "^0.10.0",
+    "typesafe-i18n": "^5.5.2"
   }
 }
