@@ -1,14 +1,27 @@
+import "reflect-metadata";
+import "dotenv/config";
+
+import Container from "typedi";
 import fs from "fs/promises";
 import { Intents } from "discord.js";
-import { Client as ClientX, ClientOptions as ClientXOptions } from "discordx";
+import { Client as ClientX, ClientOptions as ClientXOptions, DIService } from "discordx";
 import { Option } from "oxide.ts";
 import { resolve } from "path";
+import { Logger } from "tslog";
+
+import type { Callback } from "./types";
 
 async function main(): Promise<void> {
+  const logger = new Logger({
+    displayFilePath: "hidden",
+  });
+
+  Container.set(Logger, logger);
+
   await startDiscordClient();
 }
 
-const DISCORD_MODULES_FOLDER = resolve(__dirname, "modules", "**", "*.{ts,js}");
+const DISCORD_MODULES_FOLDER = resolve(__dirname, "modules");
 
 const DISCORD_INTENTS: number[] = [
   Intents.FLAGS.GUILDS,
@@ -17,11 +30,17 @@ const DISCORD_INTENTS: number[] = [
 ];
 
 async function startDiscordClient(): Promise<void> {
+  DIService.container = Container;
+
+  const logger = Container.get(Logger);
+
   const client = new ClientX({
     intents: DISCORD_INTENTS,
   });
 
   if (process.env.NODE_ENV === "development") {
+    logger.info("Starting Discord client in development mode.");
+
     (<ClientXOptions>client.options).botGuilds = [
       async client => {
         const guilds = await client.guilds.fetch();
@@ -30,7 +49,11 @@ async function startDiscordClient(): Promise<void> {
     ];
   }
 
-  await importFolderFilesRecursvily(DISCORD_MODULES_FOLDER);
+  await importFolderRecursive(DISCORD_MODULES_FOLDER, fileName => {
+    const ext = fileName.split(".").pop();
+    return ext === "ts" || ext === "js";
+  });
+
   await client.login(
     Option(process.env.DISCORDJS_TOKEN).expect(
       "Missing the environment variable `DISCORDJS_TOKEN`."
@@ -43,20 +66,26 @@ async function startDiscordClient(): Promise<void> {
  * @param path Path to the folder to import.
  * @returns All the files found in the folder.
  */
-async function importFolderFilesRecursvily(path: string): Promise<unknown[]> {
+async function importFolderRecursive(
+  path: string,
+  fileNameFilter: Callback<string, boolean>
+): Promise<unknown[]> {
   const entries = await fs.readdir(path, {
     withFileTypes: true,
   });
 
-  return await Promise.all(
-    entries.map(async entry => {
-      if (entry.isBlockDevice()) {
-        return await importFolderFilesRecursvily(resolve(path, entry.name));
-      } else {
-        return await import(resolve(path, entry.name));
-      }
-    })
-  );
+  const files = entries
+    .filter(file => !file.isDirectory())
+    .filter(file => fileNameFilter(file.name))
+    .map(file => ({ ...file, path: resolve(path, file.name) }));
+
+  const folders = entries.filter(folder => folder.isDirectory());
+
+  for await (const folder of folders) {
+    await importFolderRecursive(resolve(path, folder.name), fileNameFilter);
+  }
+
+  return await Promise.all(files.map(async file => await import(file.path)));
 }
 
 if (require.main === module) {
