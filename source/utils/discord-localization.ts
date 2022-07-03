@@ -1,31 +1,26 @@
-// TODO: Add a way to send, edit messages/interactions with a localization directly.
-// Eg. `interaction.editReplyL(["LOCALIZATION_KEY", ...params], { ... })`
-
-// FIXME: Add support for chained localizations. Eg. "EXAMPLE.NAME" instead of "EXAMPLE_NAME".
-// Maybe pass this as an array (["EXAMPLE", "NAME"]) and throws never when the localization has
-// parameters? It's not supposed to be used in this way.
-
-import { LocalizationMap } from "discord-api-types/v10";
-import { Interaction } from "discord.js";
 import {
-  ClassDecoratorEx,
-  MethodDecoratorEx,
-  ParameterDecoratorEx,
   Slash,
   SlashGroup,
   SlashOption,
-  SlashOptionOptions,
+  type ClassDecoratorEx,
+  type MethodDecoratorEx,
+  type ParameterDecoratorEx,
+  type SlashOptionOptions,
 } from "discordx";
-import { LocalizedString } from "typesafe-i18n";
+import type { LocalizationMap } from "discord-api-types/v10";
+import type { Interaction } from "discord.js";
+import type { Join } from "type-fest";
+import type { LocalizedString } from "typesafe-i18n";
 
 import L from "../locales/i18n-node";
 import { baseLocale, loadedLocales } from "../locales/i18n-util";
 import type { Locales, TranslationFunctions } from "../locales/i18n-types";
+import type { DeepReplace, ObjectKeysToStringPath } from "../types";
 
-export namespace DiscordUtils {
+export namespace DiscordLocalization {
   interface SharedNameAndDescription {
-    name: LocalizationInput;
-    description: LocalizationInput;
+    name: LocalizationKeyPath;
+    description: LocalizationKeyPath;
   }
 
   interface SharedNameAndDescriptionLocalized {
@@ -34,15 +29,21 @@ export namespace DiscordUtils {
     descriptionLocalizations: LocalizationMap;
   }
 
-  type CommandTranslationFunctions = TranslationFunctions["slashes"];
-  type CommandTranslation = keyof CommandTranslationFunctions;
+  interface GetLocalizationMapOptions {
+    input: LocalizationKeyPath;
+  }
 
-  // NOTE: If you want to remove mirroring of `...Parameters`, you need to modify
-  // `executeLocalizationFn` to not spread the parameters.
-  type LocalizationInput<T extends CommandTranslation = CommandTranslation> = [
-    T,
-    ...Parameters<CommandTranslationFunctions[T]>
-  ];
+  type SlashCommandGroupOptions = SharedNameAndDescription & {
+    root?: string;
+    markAllAsThisGroup?: boolean;
+  };
+
+  const SEPARATOR = ".";
+
+  type LocalizationKeyPath = Join<
+    ObjectKeysToStringPath<DeepReplace<TranslationFunctions["slashes"], string>>,
+    typeof SEPARATOR
+  >;
 
   type SlashOptionOptionsWithoutNamingFields = Omit<
     SlashOptionOptions,
@@ -50,6 +51,79 @@ export namespace DiscordUtils {
   >;
 
   const SLASH_TRANSLATIONS_NAMESPACE = "slashes";
+
+  let BASE_LOCALE: Locales = baseLocale;
+
+  /** Changes the base locale used for localization in this module. */
+  export function setBaseLocale(locale: Locales): void {
+    BASE_LOCALE = locale;
+  }
+
+  /** Executes the L function from the given input. */
+  export function executeLocalizationFn(
+    input: LocalizationKeyPath,
+    locale: Locales = BASE_LOCALE
+  ): LocalizedString {
+    const localizedString = input.split(SEPARATOR).reduce((prev, curr) => {
+      // @ts-ignore
+      return prev[curr];
+    }, L[locale][SLASH_TRANSLATIONS_NAMESPACE]);
+
+    if (typeof localizedString !== "function") {
+      throw new Error(
+        "This localization key is not a function. Are you sure you have the right key?"
+      );
+    }
+
+    return (localizedString as Function)();
+  }
+
+  /** Gets the Discord's v10 localization map for the given input & namespace. */
+  export function getLocalizationMap(options: GetLocalizationMapOptions): LocalizationMap {
+    const result: LocalizationMap = {};
+
+    if (!Object.keys(loadedLocales).includes(SLASH_TRANSLATIONS_NAMESPACE)) {
+      for (const locale of Object.keys(loadedLocales) as Locales[]) {
+        result[locale] = executeLocalizationFn(options.input, locale);
+      }
+
+      return result;
+    }
+
+    throw new Error(
+      `The namespace ${SLASH_TRANSLATIONS_NAMESPACE} is not loaded. Please load it before using it.`
+    );
+  }
+
+  /**
+   * Returns the resolved shared localizations options for the given input. The default namespace is
+   * the constant `TRANSLATION_NAMESPACE`.
+   */
+  function resolveSharedNameAndDescription(
+    options: SharedNameAndDescription
+  ): SharedNameAndDescriptionLocalized {
+    return {
+      description: executeLocalizationFn(options.description),
+      nameLocalizations: getLocalizationMap({ input: options.name }),
+      descriptionLocalizations: getLocalizationMap({ input: options.description }),
+    };
+  }
+
+  /**
+   * Returns the preferred locale of the user in the given interaction. Falls back to the default
+   * locale if the user doesn't have a preferred locale.
+   */
+  export function getPreferredLocale(interaction: Interaction): TranslationFunctions {
+    if (Object.keys(loadedLocales).includes(interaction.locale)) {
+      return L[interaction.locale as Locales];
+    }
+
+    if (interaction.inGuild() && Object.keys(loadedLocales).includes(interaction.guildLocale)) {
+      return L[interaction.guildLocale as Locales];
+    }
+
+    return L[BASE_LOCALE];
+  }
 
   export function SlashCommand(input: SharedNameAndDescription): MethodDecoratorEx {
     return (target, key, descriptor) => {
@@ -75,11 +149,6 @@ export namespace DiscordUtils {
     };
   }
 
-  type SlashCommandGroupOptions = SharedNameAndDescription & {
-    root?: string;
-    markAllAsThisGroup?: boolean;
-  };
-
   export function SlashCommandGroup(options: SlashCommandGroupOptions): ClassDecoratorEx {
     return (target, key, descriptor) => {
       SlashGroup({
@@ -96,78 +165,13 @@ export namespace DiscordUtils {
       }
     };
   }
-
-  /**
-   * Returns the resolved shared localizations options for the given input. The default namespace is
-   * the constant `TRANSLATION_NAMESPACE`.
-   */
-  function resolveSharedNameAndDescription(
-    options: SharedNameAndDescription
-  ): SharedNameAndDescriptionLocalized {
-    return {
-      description: executeLocalizationFn(options.description),
-      nameLocalizations: getLocalizationMap({ input: options.name }),
-      descriptionLocalizations: getLocalizationMap({ input: options.description }),
-    };
-  }
-
-  /**
-   * Executes the L function from the given input. (Useful for not repeating @ts-ignore everywhere.)
-   * @todo Remove the unecessary `@ts-ignore`.
-   */
-  function executeLocalizationFn(input: LocalizationInput): LocalizedString {
-    const LL = L[baseLocale][SLASH_TRANSLATIONS_NAMESPACE][input[0]];
-    // @ts-ignore
-    return LL(...input.slice(1));
-  }
-
-  interface GetLocalizationMapOptions {
-    input: LocalizationInput;
-  }
-
-  /** Gets the Discord's v10 localization map for the given input & namespace. */
-  export function getLocalizationMap(options: GetLocalizationMapOptions): LocalizationMap {
-    const result: LocalizationMap = {};
-
-    if (!Object.keys(loadedLocales).includes(SLASH_TRANSLATIONS_NAMESPACE)) {
-      for (const locale of Object.keys(loadedLocales) as Locales[]) {
-        // @ts-ignore
-        result[locale] = L[locale][SLASH_TRANSLATIONS_NAMESPACE][options.input[0]](
-          // @ts-ignore
-          ...options.input.slice(1)
-        );
-      }
-
-      return result;
-    }
-
-    throw new Error(
-      `The namespace ${SLASH_TRANSLATIONS_NAMESPACE} is not loaded. Please load it before using it.`
-    );
-  }
-
-  /**
-   * Returns the preferred locale for an interaction. The order of preference is: user, guild,
-   * default.
-   */
-  export function getPreferredLocale(interaction: Interaction): Locales {
-    if (Object.keys(loadedLocales).includes(interaction.locale)) {
-      return interaction.locale as Locales;
-    }
-
-    if (interaction.inGuild() && Object.keys(loadedLocales).includes(interaction.guildLocale)) {
-      return interaction.guildLocale as Locales;
-    }
-
-    return baseLocale;
-  }
 }
 
 /** Extended decorator for the `discordx/Slash`. Adds localization support. */
-export const SlashCommand = DiscordUtils.SlashCommand;
+export const SlashCommand = DiscordLocalization.SlashCommand;
 
 /** Extended decorator for the `discordx/SlashOption`. Adds localization support. */
-export const SlashCommandOption = DiscordUtils.SlashCommandOption;
+export const SlashCommandOption = DiscordLocalization.SlashCommandOption;
 
 /** Extended decorator for the `discordx/SlashGroup`. Adds localization support. */
-export const SlashCommandGroup = DiscordUtils.SlashCommandGroup;
+export const SlashCommandGroup = DiscordLocalization.SlashCommandGroup;

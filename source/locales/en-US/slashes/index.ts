@@ -1,12 +1,12 @@
 import type { BaseTranslation } from "../../i18n-types";
 
-const pt_BR: BaseTranslation = {
+const en_US: BaseTranslation = {
   // Related slash commands are listed here. Eg. name, description, options, etc.
   // ! DOESN'T USE DYNAMIC PARAMETERS, ONLY STATIC STRINGS.
   EXAMPLE: {
-    NAME: "exemplo",
-    DESCRIPTION: "Não possui nenhuma funcionalidade.",
+    NAME: "example",
+    DESCRIPTION: "Not has any functionality.",
   },
 };
 
-export default pt_BR;
+export default en_US;

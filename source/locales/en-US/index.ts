@@ -1,8 +1,8 @@
 import type { BaseTranslation } from "../i18n-types";
 
-const pt_BR: BaseTranslation = {
+const en_US: BaseTranslation = {
   // Common translation used across the bot, eg. simple phrases like "Missing permission" or "Invalid command".
-  COMMAND_NOT_IMPLEMENTED: "Este comando ainda não foi implementado.",
+  COMMAND_NOT_IMPLEMENTED: "Command not implemented yet.",
 };
 
-export default pt_BR;
+export default en_US;
