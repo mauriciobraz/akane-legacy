@@ -1,9 +1,10 @@
+require("dotenv/config");
 const { resolve } = require("path");
 
-// if (!process.env.DATABASE_URL) {
-//   console.error("DATABASE_URL is not set");
-//   process.exit(1);
-// }
+if (!process.env.DATABASE_URL) {
+  console.error("DATABASE_URL is not set");
+  process.exit(1);
+}
 
 /**
  * @type { import("knex").Knex.Config }
