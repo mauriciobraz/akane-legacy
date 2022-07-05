@@ -31,6 +31,8 @@ export namespace DiscordLocalization {
 
   interface GetLocalizationMapOptions {
     input: LocalizationKeyPath;
+    // name: LocalizationKeyPath;
+    // description: LocalizationKeyPath;
   }
 
   type SlashCommandGroupOptions = SharedNameAndDescription & {
@@ -87,6 +89,12 @@ export namespace DiscordLocalization {
         result[locale] = executeLocalizationFn(options.input, locale);
       }
 
+      for (const locale of Object.keys(result) as Locales[]) {
+        if (!result[locale] || result[locale] === null || result[locale] === "") {
+          delete result[locale];
+        }
+      }
+
       return result;
     }
 
@@ -113,16 +121,16 @@ export namespace DiscordLocalization {
    * Returns the preferred locale of the user in the given interaction. Falls back to the default
    * locale if the user doesn't have a preferred locale.
    */
-  export function getPreferredLocale(interaction: Interaction): TranslationFunctions {
+  export function getPreferredLocale(interaction: Interaction): Locales {
     if (Object.keys(loadedLocales).includes(interaction.locale)) {
-      return L[interaction.locale as Locales];
+      return interaction.locale as Locales;
     }
 
     if (interaction.inGuild() && Object.keys(loadedLocales).includes(interaction.guildLocale)) {
-      return L[interaction.guildLocale as Locales];
+      return interaction.guildLocale as Locales;
     }
 
-    return L[BASE_LOCALE];
+    return BASE_LOCALE;
   }
 
   export function SlashCommand(input: SharedNameAndDescription): MethodDecoratorEx {

@@ -1,12 +1,25 @@
 import type { BaseTranslation } from "../../i18n-types";
 
-const pt_BR: BaseTranslation = {
+const pt_BR_slashes: BaseTranslation = {
   // Related slash commands are listed here. Eg. name, description, options, etc.
-  // ! DOESN'T USE DYNAMIC PARAMETERS, ONLY STATIC STRINGS.
-  EXAMPLE: {
-    NAME: "exemplo",
-    DESCRIPTION: "Não possui nenhuma funcionalidade.",
+  WARN: {
+    NAME: "avisar",
+    DESCRIPTION: "Avisa um usuário e salva o aviso permanentemente.",
+    OPTIONS: {
+      USER: {
+        NAME: "usuário",
+        DESCRIPTION: "O usuário a ser avisado.",
+      },
+      REASON: {
+        NAME: "motivo",
+        DESCRIPTION: "Motivo que será salvo e enviado ao usuário.",
+      },
+      SILENT: {
+        NAME: "silencioso",
+        DESCRIPTION: "Não tenta avisar o usuário em DM.",
+      },
+    },
   },
 };
 
-export default pt_BR;
+export default pt_BR_slashes;

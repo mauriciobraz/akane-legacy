@@ -1,28 +1,26 @@
 import "dotenv/config";
 import "reflect-metadata";
 
-import fs from "fs/promises";
+import * as fs from "fs/promises";
 import Container from "typedi";
-import knex from "knex";
 import { Intents } from "discord.js";
 import { Client as ClientX, ClientOptions as ClientXOptions, DIService } from "discordx";
 import { Option } from "oxide.ts";
 import { resolve } from "path";
 import { Logger } from "tslog";
 
-import knexfile from "../knexfile.js";
+import { AkaneDataSource } from "./database/data-source";
 import { locales, namespaces } from "./locales/i18n-util";
 import { loadNamespaceAsync } from "./locales/i18n-util.async";
 import type { Callback } from "./types";
+import L from "./locales/i18n-node";
 
 async function main(): Promise<void> {
   const logger = new Logger({
     displayFilePath: "hidden",
   });
-  Container.set(Logger, logger);
 
-  const knexClient = knex(knexfile);
-  Container.set(knex, knexClient);
+  Container.set(Logger, logger);
 
   // Preload namespaces for all locales.
   await Promise.all(
@@ -35,6 +33,7 @@ async function main(): Promise<void> {
 
   logger.info("Loaded all namespaces for all locales.");
 
+  await AkaneDataSource.initialize();
   await startDiscordClient();
 }
 
