@@ -20,6 +20,16 @@ const pt_BR_slashes: BaseTranslation = {
       },
     },
   },
+  INFRACTIONS: {
+    NAME: "infrações",
+    DESCRIPTION: "Lista as infrações do usuário.",
+    OPTIONS: {
+      USER: {
+        NAME: "usuário",
+        DESCRIPTION: "O usuário que deseja ver as infrações.",
+      },
+    },
+  },
 };
 
 export default pt_BR_slashes;

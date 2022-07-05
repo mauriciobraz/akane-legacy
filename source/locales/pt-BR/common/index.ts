@@ -8,6 +8,10 @@ const pt_BR_common: BaseTranslation = {
   PUNISHMENT_SUCCESS:
     "Punição aplicada com sucesso ao usuário {user:string}, use /punições para ver o histórico de punições do usuário.",
   NO_PUNISHMENTS: "O usuário não possui punições neste servidor.",
+
+  INFRACTIONS_OF: "Infrações de {user:string}",
+  NO_INFRACTIONS: "O usuário não possui infrações neste servidor.",
+  X_INFRACTIONS: "{count:number} infrações.",
 };
 
 export default pt_BR_common;
