@@ -108,21 +108,6 @@ export class ModerationKick {
       })
     );
 
-    await PunishmentRepository.save(
-      PunishmentRepository.create({
-        type: PunishmentType.KICK,
-        punisher: user,
-        user: targetUser,
-        reason,
-      })
-    );
-
-    await UserRepository.update(targetUser, {
-      givenPunishments: targetUser.givenPunishments,
-    });
-
-    await member.kick(reason ?? LL.ERRORS.NO_REASON_PROVIDED());
-
     let DMLocked = false;
 
     if (!silent) {
@@ -151,21 +136,24 @@ export class ModerationKick {
 
         const actionRow = new MessageActionRow().addComponents(contestButton);
 
-        await authorMember.send({
+        await member.send({
           components: [actionRow],
           embeds: [warnEmbed],
         });
       } catch (_error) {
+        console.error(_error);
         DMLocked = true;
       }
     }
 
+    await member.kick(reason ?? LL.ERRORS.NO_REASON_PROVIDED());
+
     await interaction.editReply(
       silent
-        ? LL.COMMON.MODERATION_WARN_SUCCESS_SILENT()
+        ? LL.COMMON.MODERATION_KICK_SUCCESS_SILENT()
         : DMLocked
-        ? LL.COMMON.MODERATION_WARN_SUCCESS_AND_FAIL_SEND_DM()
-        : LL.COMMON.MODERATION_WARN_SUCCESS()
+        ? LL.COMMON.MODERATION_KICK_SUCCESS_AND_FAIL_SEND_DM()
+        : LL.COMMON.MODERATION_KICK_SUCCESS()
     );
   }
 }

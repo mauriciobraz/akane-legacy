@@ -1,3 +1,5 @@
+// TODO: Trait some DiscordJS API errors globally.
+
 import { MessageEmbed } from "discord.js";
 import { Discord, On, Once, type ArgsOf } from "discordx";
 import { Logger } from "tslog";

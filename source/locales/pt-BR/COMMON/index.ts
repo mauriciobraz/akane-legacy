@@ -7,7 +7,7 @@ const pt_BR_common: BaseTranslation = {
 
   INFRACTIONS_OF: "Infrações de {user:string}",
   USER_HAS_NO_INFRACTIONS: "Este usuário não possui infrações neste servidor.",
-  X_INFRACTIONS: "{count:number} infrações.",
+  X_INFRACTIONS: "{count:number} {{infração|infrações}}.",
 
   // Command-specific translations
 

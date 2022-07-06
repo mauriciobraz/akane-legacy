@@ -44,10 +44,11 @@ export namespace GuildGuards {
     silent?: boolean
   ): GuardFunction<Interaction> {
     return async (interaction, _client, next) => {
-      if (interaction.inGuild()) {
+      if (interaction.guild && interaction.member) {
         if (bot) {
           if (interaction.guild.me.permissions.has(permissions)) {
-            return await next();
+            await next();
+            return;
           }
         }
 
@@ -57,21 +58,32 @@ export namespace GuildGuards {
         );
 
         if (member.permissions.has(permissions)) {
-          return await next();
+          await next();
+          return;
         }
 
         if (!silent && interaction.isRepliable()) {
           const LL = L[DiscordLocalization.getPreferredLocale(interaction)].ERRORS;
 
+          if (!interaction.deferred) {
+            await interaction.deferReply({ ephemeral: true });
+          }
+
           await interaction.followUp({
-            content: LL.MISSING_PERMISSIONS({ permissions }),
+            content: LL.USER_MISSING_PERMISSIONS({ permissions }),
             ephemeral: true,
           });
         }
+
+        return;
       }
 
       if (!silent && interaction.isRepliable()) {
         const LL = L[DiscordLocalization.getPreferredLocale(interaction)].ERRORS;
+
+        if (!interaction.deferred) {
+          await interaction.deferReply({ ephemeral: true });
+        }
 
         await interaction.followUp({
           content: LL.NOT_IN_GUILD(),

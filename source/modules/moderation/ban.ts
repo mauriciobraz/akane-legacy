@@ -117,24 +117,6 @@ export class ModerationBan {
       })
     );
 
-    await PunishmentRepository.save(
-      PunishmentRepository.create({
-        type: PunishmentType.BAN,
-        punisher: user,
-        user: targetUser,
-        reason,
-      })
-    );
-
-    await UserRepository.update(targetUser, {
-      givenPunishments: targetUser.givenPunishments,
-    });
-
-    await member.ban({
-      reason: reason ?? LL.ERRORS.NO_REASON_PROVIDED(),
-      days: time,
-    });
-
     let DMLocked = false;
 
     if (!silent) {
@@ -164,7 +146,7 @@ export class ModerationBan {
 
         const actionRow = new MessageActionRow().addComponents(contestButton);
 
-        await authorMember.send({
+        await member.send({
           components: [actionRow],
           embeds: [banEmbed],
         });
@@ -172,6 +154,11 @@ export class ModerationBan {
         DMLocked = true;
       }
     }
+
+    await member.ban({
+      reason: reason ?? LL.ERRORS.NO_REASON_PROVIDED(),
+      days: time,
+    });
 
     await interaction.editReply(
       silent
