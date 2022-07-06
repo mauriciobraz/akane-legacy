@@ -1,10 +1,10 @@
 import { MessageEmbed } from "discord.js";
-import { type ArgsOf, Discord, Once, On } from "discordx";
+import { Discord, On, Once, type ArgsOf } from "discordx";
 import { Logger } from "tslog";
-import L from "../locales/i18n-node";
 
-import { Client } from "../types";
+import L from "../locales/i18n-node";
 import { DiscordLocalization } from "../utils/discord-localization";
+import type { Client } from "../types";
 
 @Discord()
 export class IndexModule {

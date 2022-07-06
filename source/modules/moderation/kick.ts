@@ -1,11 +1,11 @@
-import { Discord, Guard } from "discordx";
 import {
-  CommandInteraction,
-  GuildMember,
   MessageActionRow,
   MessageButton,
   MessageEmbed,
+  type CommandInteraction,
+  type GuildMember,
 } from "discord.js";
+import { Discord, Guard } from "discordx";
 import type { Logger } from "tslog";
 
 import L from "../../locales/i18n-node";
@@ -16,6 +16,7 @@ import {
   UserRepository,
 } from "../../database/repositories";
 import { GuildGuards } from "../../guards/guild";
+import { DiscordApiTypes } from "../../utils/discord-api-types";
 import {
   DiscordLocalization,
   SlashCommand,
@@ -23,33 +24,37 @@ import {
 } from "../../utils/discord-localization";
 
 @Discord()
-export class ModerationWarn {
+export class ModerationKick {
   constructor(private readonly logger: Logger) {}
 
-  @SlashCommand({ name: "WARN.NAME", description: "WARN.DESCRIPTION" })
+  @SlashCommand({
+    name: "KICK.NAME",
+    description: "KICK.DESCRIPTION",
+  })
   @Guard(
     GuildGuards.inGuild(),
-    GuildGuards.hasPermissions(["MUTE_MEMBERS"]),
-    GuildGuards.hasPermissions(["MUTE_MEMBERS"], true)
+    GuildGuards.hasPermissions(["KICK_MEMBERS"]),
+    GuildGuards.hasPermissions(["KICK_MEMBERS"], true)
   )
-  async handleWarn(
+  async handleKick(
     @SlashCommandOption({
-      name: "WARN.OPTIONS.USER.NAME",
-      description: "WARN.OPTIONS.USER.DESCRIPTION",
+      name: "KICK.OPTIONS.USER.NAME",
+      description: "KICK.OPTIONS.USER.DESCRIPTION",
       type: "USER",
     })
     member: GuildMember,
 
     @SlashCommandOption({
-      name: "WARN.OPTIONS.REASON.NAME",
-      description: "WARN.OPTIONS.REASON.DESCRIPTION",
+      name: "KICK.OPTIONS.REASON.NAME",
+      description: "KICK.OPTIONS.REASON.DESCRIPTION",
       type: "STRING",
+      required: false,
     })
-    reason: string,
+    reason: string | null = null,
 
     @SlashCommandOption({
-      name: "WARN.OPTIONS.SILENT.NAME",
-      description: "WARN.OPTIONS.SILENT.DESCRIPTION",
+      name: "KICK.OPTIONS.SILENT.NAME",
+      description: "KICK.OPTIONS.SILENT.DESCRIPTION",
       type: "BOOLEAN",
       required: false,
     })
@@ -63,44 +68,74 @@ export class ModerationWarn {
 
     const LL = L[DiscordLocalization.getPreferredLocale(interaction)];
 
+    const authorMember = await DiscordApiTypes.fromGuildMember(
+      interaction.member as GuildMember,
+      interaction.guild
+    );
+
+    if (!(await GuildGuards.hasHigherRole(interaction.guild.me, member, false, interaction))) {
+      return;
+    }
+
+    if (!(await GuildGuards.hasHigherRole(authorMember, member, false, interaction))) {
+      return;
+    }
+
     const guild = await GuildsRepository.createIfNotExists({
-      discordId: interaction.guildId,
+      discordId: interaction.guild.id,
+      punishments: [],
+      users: [],
     });
 
     const user = await UserRepository.createIfNotExists({
-      discordId: member.id,
+      discordId: interaction.user.id,
+      givenPunishments: [],
+      punishments: [],
       guilds: [guild],
     });
 
-    const punisher = await UserRepository.createIfNotExists({
-      discordId: interaction.user.id,
+    const targetUser = await UserRepository.createIfNotExists({
+      discordId: member.id,
       guilds: [guild],
     });
 
     await PunishmentRepository.save(
       PunishmentRepository.create({
-        type: PunishmentType.WARN,
-        guild,
-        punisher,
+        type: PunishmentType.KICK,
+        punisher: user,
+        user: targetUser,
         reason,
-        user,
       })
     );
+
+    await PunishmentRepository.save(
+      PunishmentRepository.create({
+        type: PunishmentType.KICK,
+        punisher: user,
+        user: targetUser,
+        reason,
+      })
+    );
+
+    await UserRepository.update(targetUser, {
+      givenPunishments: targetUser.givenPunishments,
+    });
+
+    await member.kick(reason ?? LL.ERRORS.NO_REASON_PROVIDED());
 
     let DMLocked = false;
 
     if (!silent) {
       try {
-        const embed = new MessageEmbed()
+        const warnEmbed = new MessageEmbed()
           .setTitle(
-            LL.EMBEDS.MODERATION_WARN_TARGET_NOTIFICATION.TITLE({
+            LL.EMBEDS.MODERATION_KICK_TARGET_NOTIFICATION.TITLE({
               guild: interaction.guild.name,
             })
           )
           .setDescription(
-            LL.EMBEDS.MODERATION_WARN_TARGET_NOTIFICATION.DESCRIPTION({
-              guild: interaction.guild.name,
-              moderator: interaction.user.tag,
+            LL.EMBEDS.MODERATION_KICK_TARGET_NOTIFICATION.DESCRIPTION({
+              moderator: authorMember.user.tag,
               reason: reason ?? LL.ERRORS.NO_REASON_PROVIDED(),
             })
           )
@@ -116,9 +151,9 @@ export class ModerationWarn {
 
         const actionRow = new MessageActionRow().addComponents(contestButton);
 
-        await member.send({
+        await authorMember.send({
           components: [actionRow],
-          embeds: [embed],
+          embeds: [warnEmbed],
         });
       } catch (_error) {
         DMLocked = true;

@@ -21,18 +21,20 @@ export class User {
   discordId: string;
 
   @OneToMany(() => Punishment, punishment => punishment.guild)
+  @JoinTable()
   punishments: Punishment[];
 
   @OneToMany(() => Punishment, punishment => punishment.punisher)
+  @JoinTable()
   givenPunishments: Punishment[];
 
   @ManyToMany(() => Guild, guild => guild.users)
   @JoinTable()
   guilds: Guild[];
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: "timestamp", precision: 3 })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: "timestamp", precision: 3 })
   updatedAt: Date;
 }

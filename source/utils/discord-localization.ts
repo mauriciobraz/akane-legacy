@@ -43,7 +43,7 @@ export namespace DiscordLocalization {
   const SEPARATOR = ".";
 
   type LocalizationKeyPath = Join<
-    ObjectKeysToStringPath<DeepReplace<TranslationFunctions["slashes"], string>>,
+    ObjectKeysToStringPath<DeepReplace<TranslationFunctions["SLASHES"], string>>,
     typeof SEPARATOR
   >;
 
@@ -52,7 +52,7 @@ export namespace DiscordLocalization {
     "description" | "descriptionLocalizations" | "name" | "nameLocalizations"
   >;
 
-  const SLASH_TRANSLATIONS_NAMESPACE = "slashes";
+  const SLASH_TRANSLATIONS_NAMESPACE = "SLASHES";
 
   let BASE_LOCALE: Locales = baseLocale;
 

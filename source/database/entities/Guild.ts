@@ -25,9 +25,9 @@ export class Guild {
   @OneToMany(() => Punishment, punishment => punishment.guild)
   punishments: Punishment[];
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: "timestamp", precision: 3 })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: "timestamp", precision: 3 })
   updatedAt: Date;
 }

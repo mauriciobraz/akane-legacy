@@ -1,20 +1,20 @@
+import { Pagination, PaginationType } from "@discordx/pagination";
+import { MessageEmbed, type CommandInteraction, type GuildMember } from "discord.js";
 import { Discord, Guard } from "discordx";
-import { CommandInteraction, GuildMember, MessageEmbed, MessageOptions } from "discord.js";
+import { chunk } from "lodash";
+import { Logger } from "tslog";
 
 import L from "../../locales/i18n-node";
+import { Punishment, PunishmentType } from "../../database/entities/Punishment";
+import { PunishmentRepository } from "../../database/repositories";
+import { UserRepository } from "../../database/repositories/User";
 import { GuildGuards } from "../../guards/guild";
 import {
   DiscordLocalization,
   SlashCommand,
   SlashCommandOption,
 } from "../../utils/discord-localization";
-import { PunishmentRepository } from "../../database/repositories/Punishment";
-import { Punishment, PunishmentType } from "../../database/entities/Punishment";
-import { chunk } from "lodash";
-import { TranslationFunctions } from "../../locales/i18n-types";
-import { Pagination, PaginationType } from "@discordx/pagination";
-import { Logger } from "tslog";
-import { UserRepository } from "../../database/repositories/User";
+import type { TranslationFunctions } from "../../locales/i18n-types";
 
 interface GeneratePunishmentsPagesOptions {
   interaction: CommandInteraction<"cached" | "raw">;
@@ -30,17 +30,21 @@ const PunishmentEmojis: { [key in PunishmentType]: string } = {
   REVERT_KICK: "🔙",
   REVERT_WARN: "🔙",
   KICK: "🚪",
-  BAN: "️",
+  BAN: "🔨",
   MUTE: "🔇",
   WARN: "📰",
 };
 
 @Discord()
-@Guard(GuildGuards.inGuild())
 export class ModerationInfractions {
   constructor(private readonly logger: Logger) {}
 
   @SlashCommand({ name: "INFRACTIONS.NAME", description: "INFRACTIONS.DESCRIPTION" })
+  @Guard(
+    GuildGuards.inGuild(),
+    GuildGuards.hasPermissions(["MODERATE_MEMBERS"]),
+    GuildGuards.hasPermissions(["MODERATE_MEMBERS"], true)
+  )
   async handleInfractions(
     @SlashCommandOption({
       name: "INFRACTIONS.OPTIONS.USER.NAME",
@@ -61,14 +65,19 @@ export class ModerationInfractions {
       discordId: user.id,
     });
 
-    const userPunishments = await PunishmentRepository.findBy({
-      user: {
-        discordId: userSaved.discordId,
+    const userPunishments = await PunishmentRepository.find({
+      where: {
+        user: {
+          discordId: user.id,
+        },
+      },
+      order: {
+        createdAt: "DESC",
       },
     });
 
     if (userPunishments.length === 0) {
-      await interaction.editReply(LL["common"].NO_PUNISHMENTS());
+      await interaction.editReply(LL.COMMON.USER_HAS_NO_INFRACTIONS());
       return;
     }
 
@@ -98,71 +107,67 @@ export class ModerationInfractions {
 
     const user = await options.interaction.guild.members.fetch(options.userId);
 
+    const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const last7Days = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    const last24HoursInfractions = options.punishments.filter(punishment => {
+      return punishment.createdAt.getTime() > last24Hours.getTime();
+    });
+
+    const last7DaysInfractions = options.punishments.filter(punishment => {
+      return punishment.createdAt.getTime() > last7Days.getTime();
+    });
+
+    const idPadSize = options.punishments.length.toString().length;
+
     for (const punishmentsChunk of punishmentsChunks) {
       const punishmentsDescriptionArray = punishmentsChunk.map(punishment => {
-        const id = `[#${punishment.id}](https://google.com)`;
+        console.log(punishment.createdAt);
 
-        // FIXME: The timestamp came in the future, i don't know why.
-        const timestamp = `<t:${Math.floor(punishment.createdAt.getTime() / 1000)}:R>`;
+        const id = `[#${punishment.id.toString().padStart(idPadSize, "0")}](https://google.com)`;
 
-        const reason =
-          punishment.reason.length > 52
-            ? punishment.reason.substring(0, 52) + "..."
-            : punishment.reason;
+        const timestamp = punishment.createdAt.toLocaleDateString(
+          DiscordLocalization.getPreferredLocale(options.interaction)
+        );
 
-        return `${PunishmentEmojis[punishment.type]} ${id} ${timestamp} ${reason}`;
+        let reason: string =
+          !!punishment.reason && punishment.reason.length > 52
+            ? `${punishment.reason.substring(0, 52)}...`
+            : punishment.reason ?? options.translationFunctions.ERRORS.NO_REASON_PROVIDED();
+
+        return `${PunishmentEmojis[punishment.type]} ${id} \`\`${timestamp}\`\` ${reason}`;
       });
-
-      const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
-      const last7Days = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-
-      const last24HoursInfractions = punishmentsChunk.filter(punishment => {
-        return punishment.createdAt.getTime() > last24Hours.getTime();
-      });
-
-      const last7DaysInfractions = punishmentsChunk.filter(punishment => {
-        return punishment.createdAt.getTime() > last7Days.getTime();
-      });
-
-      console.log(
-        options.translationFunctions["common"].X_INFRACTIONS({
-          count: last24HoursInfractions.length,
-        })
-      );
 
       const embed = new MessageEmbed()
-        .setAuthor({
-          name: options.translationFunctions["common"].INFRACTIONS_OF({ user: user.user.tag }),
-          iconURL: user.user.avatarURL(),
-        })
         .setDescription(punishmentsDescriptionArray.join("\n") + "\n\u200b")
         .setColor(0x141414)
+        .setAuthor({
+          name: options.translationFunctions.COMMON.INFRACTIONS_OF({ user: user.user.tag }),
+          iconURL: user.user.avatarURL(),
+        })
         .addFields([
           {
-            name: options.translationFunctions["common"].LAST_24_HOURS(),
-            value: options.translationFunctions["common"].X_INFRACTIONS({
+            name: options.translationFunctions.COMMON.LAST_24_HOURS(),
+            value: options.translationFunctions.COMMON.X_INFRACTIONS({
               count: last24HoursInfractions.length,
             }),
             inline: true,
           },
           {
-            name: options.translationFunctions["common"].LAST_7_DAYS(),
-            value: options.translationFunctions["common"].X_INFRACTIONS({
+            name: options.translationFunctions.COMMON.LAST_7_DAYS(),
+            value: options.translationFunctions.COMMON.X_INFRACTIONS({
               count: last7DaysInfractions.length,
             }),
             inline: true,
           },
           {
-            name: options.translationFunctions["common"].TOTAL(),
-            value: options.translationFunctions["common"].X_INFRACTIONS({
-              count: punishmentsChunk.length,
+            name: options.translationFunctions.COMMON.TOTAL(),
+            value: options.translationFunctions.COMMON.X_INFRACTIONS({
+              count: options.punishments.length,
             }),
             inline: true,
           },
         ]);
-
-      this.logger.debug(`Generated infractions page for user ${user.user.tag}`);
-      this.logger.debug(embed);
 
       pages.push(embed);
     }

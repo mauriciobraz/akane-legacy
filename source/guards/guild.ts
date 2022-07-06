@@ -13,8 +13,21 @@ export namespace GuildGuards {
    */
   export function inGuild(silent?: boolean): GuardFunction<Interaction> {
     return async (interaction, _client, next) => {
-      if (interaction.inGuild()) {
-        await next();
+      if (interaction.guild && interaction.member) {
+        return await next();
+      }
+
+      if (!silent && interaction.isRepliable()) {
+        const LL = L[DiscordLocalization.getPreferredLocale(interaction)].ERRORS;
+
+        if (!interaction.deferred) {
+          await interaction.deferReply({ ephemeral: true });
+        }
+
+        await interaction.followUp({
+          content: LL.NOT_IN_GUILD(),
+          ephemeral: true,
+        });
       }
     };
   }
@@ -27,19 +40,95 @@ export namespace GuildGuards {
    */
   export function hasPermissions(
     permissions: PermissionString[],
+    bot?: boolean,
     silent?: boolean
   ): GuardFunction<Interaction> {
     return async (interaction, _client, next) => {
       if (interaction.inGuild()) {
-        const member = DiscordApiTypes.fromGuildMember(
+        if (bot) {
+          if (interaction.guild.me.permissions.has(permissions)) {
+            return await next();
+          }
+        }
+
+        const member = await DiscordApiTypes.fromGuildMember(
           interaction.member as GuildMember,
           interaction.guild || (await interaction.client.guilds.fetch(interaction.guildId))
         );
 
-        if ((await member).permissions.has(permissions)) {
+        if (member.permissions.has(permissions)) {
           return await next();
         }
+
+        if (!silent && interaction.isRepliable()) {
+          const LL = L[DiscordLocalization.getPreferredLocale(interaction)].ERRORS;
+
+          await interaction.followUp({
+            content: LL.MISSING_PERMISSIONS({ permissions }),
+            ephemeral: true,
+          });
+        }
+      }
+
+      if (!silent && interaction.isRepliable()) {
+        const LL = L[DiscordLocalization.getPreferredLocale(interaction)].ERRORS;
+
+        await interaction.followUp({
+          content: LL.NOT_IN_GUILD(),
+          ephemeral: true,
+        });
       }
     };
+  }
+
+  /**
+   * Checks if a member has a higher role than the target. Handles the notifications for the user when they have inferior roles.
+   * @param member The member to check.
+   * @param target The target member to check if role is higher than the target member.
+   * @param silent Warns the user that the member has a higher role than the target.
+   * @param interaction The interaction to use.
+   */
+  export async function hasHigherRole(
+    member: GuildMember,
+    target: GuildMember,
+    silent: boolean,
+    interaction: Interaction
+  ): Promise<boolean> {
+    if (member.user.id === target.user.id) {
+      if (!silent && interaction.isRepliable()) {
+        const LL = L[DiscordLocalization.getPreferredLocale(interaction)].ERRORS;
+
+        if (!interaction.deferred) {
+          await interaction.deferReply({ ephemeral: true });
+        }
+
+        await interaction.followUp(LL.USER_TRYING_TO_PUNISH_HIMSELF());
+      }
+
+      return false;
+    }
+
+    const comparedPosition = member.roles.highest.comparePositionTo(target.roles.highest);
+
+    if (comparedPosition <= 0) {
+      if (!silent && interaction.isRepliable()) {
+        const LL = L[DiscordLocalization.getPreferredLocale(interaction)].ERRORS;
+
+        if (!interaction.deferred) {
+          await interaction.deferReply({ ephemeral: true });
+        }
+
+        await interaction.followUp({
+          content:
+            member.user.id === interaction.client.user.id
+              ? LL.BOT_ROLE_INFERIOR_THAN_TARGET()
+              : LL.TARGET_ROLE_HIGHER(),
+        });
+      }
+
+      return false;
+    }
+
+    return true;
   }
 }

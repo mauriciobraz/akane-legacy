@@ -38,12 +38,12 @@ export class Punishment {
   @Column()
   type: PunishmentType;
 
-  @Column()
-  reason: string;
+  @Column({ nullable: true })
+  reason: string | null;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: "timestamp", precision: 3 })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: "timestamp", precision: 3 })
   updatedAt: Date;
 }
