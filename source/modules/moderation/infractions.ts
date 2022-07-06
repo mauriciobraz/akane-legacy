@@ -122,8 +122,6 @@ export class ModerationInfractions {
 
     for (const punishmentsChunk of punishmentsChunks) {
       const punishmentsDescriptionArray = punishmentsChunk.map(punishment => {
-        console.log(punishment.createdAt);
-
         const id = `[#${punishment.id.toString().padStart(idPadSize, "0")}](https://google.com)`;
 
         const timestamp = punishment.createdAt.toLocaleDateString(
