@@ -1,3 +1,4 @@
+import Container from "typedi";
 import {
   MessageActionRow,
   MessageButton,
@@ -6,15 +7,9 @@ import {
   type GuildMember,
 } from "discord.js";
 import { Discord, Guard } from "discordx";
-import type { Logger } from "tslog";
+import { PrismaClient } from "@prisma/client";
 
 import L from "../../locales/i18n-node";
-import { PunishmentType } from "../../database/entities/Punishment";
-import {
-  GuildsRepository,
-  PunishmentRepository,
-  UserRepository,
-} from "../../database/repositories";
 import { GuildGuards } from "../../guards/guild";
 import { DiscordApiTypes } from "../../utils/discord-api-types";
 import {
@@ -25,7 +20,7 @@ import {
 
 @Discord()
 export class ModerationBan {
-  constructor(private readonly logger: Logger) {}
+  private readonly prisma = Container.get(PrismaClient);
 
   @SlashCommand({
     name: "BAN.NAME",
@@ -90,32 +85,39 @@ export class ModerationBan {
       return;
     }
 
-    const guild = await GuildsRepository.createIfNotExists({
-      discordId: interaction.guild.id,
-      punishments: [],
-      users: [],
+    const guild = await this.prisma.guild.upsert({
+      where: { guildId: interaction.guildId },
+      create: { guildId: interaction.guildId },
+      update: {},
     });
 
-    const user = await UserRepository.createIfNotExists({
-      discordId: interaction.user.id,
-      givenPunishments: [],
-      punishments: [],
-      guilds: [guild],
+    const user = await this.prisma.user.upsert({
+      where: { userId: member.id },
+      create: {
+        userId: member.id,
+        Guilds: { connect: { guildId: interaction.guildId } },
+      },
+      update: {},
     });
 
-    const targetUser = await UserRepository.createIfNotExists({
-      discordId: member.id,
-      guilds: [guild],
+    const userPunisher = await this.prisma.user.upsert({
+      where: { userId: interaction.user.id },
+      create: {
+        userId: interaction.user.id,
+        Guilds: { connect: { guildId: interaction.guildId } },
+      },
+      update: {},
     });
 
-    await PunishmentRepository.save(
-      PunishmentRepository.create({
-        type: PunishmentType.BAN,
-        punisher: user,
-        user: targetUser,
+    await this.prisma.punishment.create({
+      data: {
+        userId: user.id,
+        punisherId: userPunisher.id,
+        guildId: guild.id,
+        type: "BAN",
         reason,
-      })
-    );
+      },
+    });
 
     let DMLocked = false;
 

@@ -1,13 +1,11 @@
+import Container from "typedi";
 import { Pagination, PaginationType } from "@discordx/pagination";
 import { MessageEmbed, type CommandInteraction, type GuildMember } from "discord.js";
 import { Discord, Guard } from "discordx";
 import { chunk } from "lodash";
-import { Logger } from "tslog";
+import { PrismaClient, Punishment, PunishmentType } from "@prisma/client";
 
 import L from "../../locales/i18n-node";
-import { Punishment, PunishmentType } from "../../database/entities/Punishment";
-import { PunishmentRepository } from "../../database/repositories";
-import { UserRepository } from "../../database/repositories/User";
 import { GuildGuards } from "../../guards/guild";
 import {
   DiscordLocalization,
@@ -25,10 +23,7 @@ interface GeneratePunishmentsPagesOptions {
 }
 
 const PunishmentEmojis: { [key in PunishmentType]: string } = {
-  REVERT_BAN: "🔙",
-  REVERT_MUTE: "🔙",
-  REVERT_KICK: "🔙",
-  REVERT_WARN: "🔙",
+  REVERT: "🔙",
   KICK: "🚪",
   BAN: "🔨",
   MUTE: "🔇",
@@ -37,7 +32,7 @@ const PunishmentEmojis: { [key in PunishmentType]: string } = {
 
 @Discord()
 export class ModerationInfractions {
-  constructor(private readonly logger: Logger) {}
+  private readonly prisma = Container.get(PrismaClient);
 
   @SlashCommand({ name: "INFRACTIONS.NAME", description: "INFRACTIONS.DESCRIPTION" })
   @Guard(
@@ -61,18 +56,18 @@ export class ModerationInfractions {
 
     const LL = L[DiscordLocalization.getPreferredLocale(interaction)];
 
-    const userSaved = await UserRepository.createIfNotExists({
-      discordId: user.id,
+    const userSaved = await this.prisma.user.upsert({
+      where: { userId: user.id },
+      create: { userId: user.id },
+      update: {},
     });
 
-    const userPunishments = await PunishmentRepository.find({
+    const userPunishments = await this.prisma.punishment.findMany({
       where: {
-        user: {
-          discordId: user.id,
-        },
+        userId: userSaved.id,
       },
-      order: {
-        createdAt: "DESC",
+      orderBy: {
+        createdAt: "desc",
       },
     });
 
@@ -86,7 +81,7 @@ export class ModerationInfractions {
       punishments: userPunishments,
       translationFunctions: LL,
       chunkSize: 5,
-      userId: userSaved.discordId,
+      userId: userSaved.userId,
     });
 
     // TODO: Stop using this pagination library and use a custom one.

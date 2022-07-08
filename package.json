@@ -1,6 +1,6 @@
 {
    "name": "akane",
-   "version": "1.0.0",
+   "version": "1.1.0",
    "main": "build/index.js",
    "license": "MIT",
    "scripts": {
@@ -23,6 +23,7 @@
    "dependencies": {
       "@discordjs/rest": "^0.5.0",
       "@discordx/pagination": "^2.2.2",
+      "@prisma/client": "^4.0.0",
       "discord-api-types": "^0.36.0",
       "discord.js": "^13.8.1",
       "discordx": "^9.8.0",
@@ -30,11 +31,11 @@
       "lodash": "^4.17.21",
       "oxide.ts": "^1.0.0",
       "pg": "^8.4.0",
+      "prisma": "^4.0.0",
       "reflect-metadata": "^0.1.13",
       "tslib": "^2.4.0",
       "tslog": "^3.3.3",
       "typedi": "^0.10.0",
-      "typeorm": "0.3.7",
       "typesafe-i18n": "^5.5.2"
    }
 }
