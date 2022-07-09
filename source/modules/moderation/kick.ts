@@ -1,4 +1,5 @@
 import Container from "typedi";
+import { PrismaClient } from "@prisma/client";
 import {
   MessageActionRow,
   MessageButton,
@@ -7,13 +8,12 @@ import {
   type GuildMember,
 } from "discord.js";
 import { Discord, Guard } from "discordx";
-import { PrismaClient } from "@prisma/client";
 
 import L from "../../locales/i18n-node";
 import { GuildGuards } from "../../guards/guild";
 import { DiscordApiTypes } from "../../utils/discord-api-types";
 import {
-  DiscordLocalization,
+  getPreferredLocaleFromInteraction,
   SlashCommand,
   SlashCommandOption,
 } from "../../utils/discord-localization";
@@ -22,34 +22,25 @@ import {
 export class ModerationKick {
   private readonly prisma = Container.get(PrismaClient);
 
-  @SlashCommand({
-    name: "KICK.NAME",
-    description: "KICK.DESCRIPTION",
-  })
+  @SlashCommand("KICK.NAME", "KICK.DESCRIPTION")
   @Guard(
     GuildGuards.inGuild(),
     GuildGuards.hasPermissions(["KICK_MEMBERS"]),
     GuildGuards.hasPermissions(["KICK_MEMBERS"], true)
   )
   async handleKick(
-    @SlashCommandOption({
-      name: "KICK.OPTIONS.USER.NAME",
-      description: "KICK.OPTIONS.USER.DESCRIPTION",
+    @SlashCommandOption("KICK.OPTIONS.USER.NAME", "KICK.OPTIONS.USER.DESCRIPTION", {
       type: "USER",
     })
     member: GuildMember,
 
-    @SlashCommandOption({
-      name: "KICK.OPTIONS.REASON.NAME",
-      description: "KICK.OPTIONS.REASON.DESCRIPTION",
+    @SlashCommandOption("KICK.OPTIONS.REASON.NAME", "KICK.OPTIONS.REASON.DESCRIPTION", {
       type: "STRING",
       required: false,
     })
     reason: string | null = null,
 
-    @SlashCommandOption({
-      name: "KICK.OPTIONS.SILENT.NAME",
-      description: "KICK.OPTIONS.SILENT.DESCRIPTION",
+    @SlashCommandOption("KICK.OPTIONS.SILENT.NAME", "KICK.OPTIONS.SILENT.DESCRIPTION", {
       type: "BOOLEAN",
       required: false,
     })
@@ -61,7 +52,7 @@ export class ModerationKick {
       await interaction.deferReply({ ephemeral: true });
     }
 
-    const LL = L[DiscordLocalization.getPreferredLocale(interaction)];
+    const LL = L[getPreferredLocaleFromInteraction(interaction)];
 
     const authorMember = await DiscordApiTypes.fromGuildMember(
       interaction.member as GuildMember,

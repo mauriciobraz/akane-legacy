@@ -1,10 +1,8 @@
 import { type Guild, GuildMember } from "discord.js";
 import type { APIInteractionGuildMember } from "discord-api-types/v9";
 
+/** Removes API-specific properties from a discord.js related objects. */
 export namespace DiscordApiTypes {
-  /**
-   * Fetches a guild member if it is not cached.
-   */
   export async function fromGuildMember(
     member: GuildMember | APIInteractionGuildMember,
     guild: Guild

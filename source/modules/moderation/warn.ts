@@ -12,7 +12,7 @@ import { PrismaClient } from "@prisma/client";
 import L from "../../locales/i18n-node";
 import { GuildGuards } from "../../guards/guild";
 import {
-  DiscordLocalization,
+  getPreferredLocaleFromInteraction,
   SlashCommand,
   SlashCommandOption,
 } from "../../utils/discord-localization";
@@ -21,30 +21,24 @@ import {
 export class ModerationWarn {
   private readonly prisma = Container.get(PrismaClient);
 
-  @SlashCommand({ name: "WARN.NAME", description: "WARN.DESCRIPTION" })
+  @SlashCommand("WARN.NAME", "WARN.DESCRIPTION")
   @Guard(
     GuildGuards.inGuild(),
     GuildGuards.hasPermissions(["MUTE_MEMBERS"]),
     GuildGuards.hasPermissions(["MUTE_MEMBERS"], true)
   )
   async handleWarn(
-    @SlashCommandOption({
-      name: "WARN.OPTIONS.USER.NAME",
-      description: "WARN.OPTIONS.USER.DESCRIPTION",
+    @SlashCommandOption("WARN.OPTIONS.USER.NAME", "WARN.OPTIONS.USER.DESCRIPTION", {
       type: "USER",
     })
     member: GuildMember,
 
-    @SlashCommandOption({
-      name: "WARN.OPTIONS.REASON.NAME",
-      description: "WARN.OPTIONS.REASON.DESCRIPTION",
+    @SlashCommandOption("WARN.OPTIONS.REASON.NAME", "WARN.OPTIONS.REASON.DESCRIPTION", {
       type: "STRING",
     })
     reason: string,
 
-    @SlashCommandOption({
-      name: "WARN.OPTIONS.SILENT.NAME",
-      description: "WARN.OPTIONS.SILENT.DESCRIPTION",
+    @SlashCommandOption("WARN.OPTIONS.SILENT.NAME", "WARN.OPTIONS.SILENT.DESCRIPTION", {
       type: "BOOLEAN",
       required: false,
     })
@@ -56,7 +50,7 @@ export class ModerationWarn {
       await interaction.deferReply({ ephemeral: true });
     }
 
-    const LL = L[DiscordLocalization.getPreferredLocale(interaction)];
+    const LL = L[getPreferredLocaleFromInteraction(interaction)];
 
     const guild = await this.prisma.guild.upsert({
       where: { guildId: interaction.guildId },

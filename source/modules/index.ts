@@ -1,16 +1,17 @@
 // TODO: Trait some DiscordJS API errors globally.
 
-import { MessageEmbed } from "discord.js";
+import Container from "typedi";
 import { Discord, On, Once, type ArgsOf } from "discordx";
 import { Logger } from "tslog";
+import { MessageEmbed } from "discord.js";
 
 import L from "../locales/i18n-node";
-import { DiscordLocalization } from "../utils/discord-localization";
+import { getPreferredLocaleFromInteraction } from "../utils/discord-localization";
 import type { Client } from "../types";
 
 @Discord()
 export class IndexModule {
-  constructor(private readonly logger: Logger) {}
+  private readonly logger = Container.get(Logger);
 
   @Once("ready")
   async onceReady(_: ArgsOf<"ready">, client: Client<true>): Promise<void> {
@@ -28,7 +29,7 @@ export class IndexModule {
         this.logger.prettyError(e);
 
         if (i.isRepliable()) {
-          const LL = L[DiscordLocalization.getPreferredLocale(i)];
+          const LL = L[getPreferredLocaleFromInteraction(i)];
 
           if (process.env.NODE_ENV === "development") {
             await i.followUp({

@@ -15,171 +15,205 @@ import type { LocalizedString } from "typesafe-i18n";
 import L from "../locales/i18n-node";
 import { baseLocale, loadedLocales } from "../locales/i18n-util";
 import type { Locales, TranslationFunctions } from "../locales/i18n-types";
-import type { DeepReplace, ObjectKeysToStringPath } from "../types";
+import type { DeepReplace, PathArray } from "../types";
 
-export namespace DiscordLocalization {
-  interface SharedNameAndDescription {
-    name: LocalizationKeyPath;
-    description: LocalizationKeyPath;
-  }
+export const LOCALIZATION_SLASH_COMMANDS_NAMESPACE = "SLASHES";
 
-  interface SharedNameAndDescriptionLocalized {
-    description: string;
-    nameLocalizations: LocalizationMap;
-    descriptionLocalizations: LocalizationMap;
-  }
+export const LOCALIZATION_KEY_PATH_SEPARATOR = ".";
 
-  interface GetLocalizationMapOptions {
-    input: LocalizationKeyPath;
-    // name: LocalizationKeyPath;
-    // description: LocalizationKeyPath;
-  }
+/** Raw localization path, as array of it's keys. */
+export type RawLocalizationKeyPath = PathArray<
+  DeepReplace<TranslationFunctions[typeof LOCALIZATION_SLASH_COMMANDS_NAMESPACE], string>
+>;
 
-  type SlashCommandGroupOptions = SharedNameAndDescription & {
-    root?: string;
-    markAllAsThisGroup?: boolean;
-  };
+/**
+ * String path to a localization key.
+ * @example "EXAMPLE.NAME" or "EXAMPLE.DESCRIPTION";
+ */
+export type LocalizationKeyPath = Join<
+  RawLocalizationKeyPath,
+  typeof LOCALIZATION_KEY_PATH_SEPARATOR
+>;
 
-  const SEPARATOR = ".";
+/** Extra options for a slash command group. */
+export type SlashCommandGroupOptions = {
+  root?: string;
+  markAllAsThisGroup?: boolean;
+};
 
-  type LocalizationKeyPath = Join<
-    ObjectKeysToStringPath<DeepReplace<TranslationFunctions["SLASHES"], string>>,
-    typeof SEPARATOR
-  >;
+/** @internal */
+type SharedNameAndDescription = {
+  description: string;
+  nameLocalizations: LocalizationMap;
+  descriptionLocalizations: LocalizationMap;
+};
 
-  type SlashOptionOptionsWithoutNamingFields = Omit<
-    SlashOptionOptions,
-    "description" | "descriptionLocalizations" | "name" | "nameLocalizations"
-  >;
+/** @internal */
+type SlashOptionOptionsWithoutNamingFields = Omit<
+  SlashOptionOptions,
+  "description" | "descriptionLocalizations" | "name" | "nameLocalizations"
+>;
 
-  const SLASH_TRANSLATIONS_NAMESPACE = "SLASHES";
+let defaultLocale: Locales = baseLocale;
 
-  let BASE_LOCALE: Locales = baseLocale;
-
-  /** Changes the base locale used for localization in this module. */
-  export function setBaseLocale(locale: Locales): void {
-    BASE_LOCALE = locale;
-  }
-
-  /** Executes the L function from the given input. */
-  export function executeLocalizationFn(
-    input: LocalizationKeyPath,
-    locale: Locales = BASE_LOCALE
-  ): LocalizedString {
-    const localizedString = input.split(SEPARATOR).reduce((prev, curr) => {
-      // @ts-ignore
-      return prev[curr];
-    }, L[locale][SLASH_TRANSLATIONS_NAMESPACE]);
-
-    if (typeof localizedString !== "function") {
-      throw new Error(
-        "This localization key is not a function. Are you sure you have the right key?"
-      );
-    }
-
-    return (localizedString as Function)();
-  }
-
-  /** Gets the Discord's v10 localization map for the given input & namespace. */
-  export function getLocalizationMap(options: GetLocalizationMapOptions): LocalizationMap {
-    const result: LocalizationMap = {};
-
-    if (!Object.keys(loadedLocales).includes(SLASH_TRANSLATIONS_NAMESPACE)) {
-      for (const locale of Object.keys(loadedLocales) as Locales[]) {
-        result[locale] = executeLocalizationFn(options.input, locale);
-      }
-
-      for (const locale of Object.keys(result) as Locales[]) {
-        if (!result[locale] || result[locale] === null || result[locale] === "") {
-          delete result[locale];
-        }
-      }
-
-      return result;
-    }
-
-    throw new Error(
-      `The namespace ${SLASH_TRANSLATIONS_NAMESPACE} is not loaded. Please load it before using it.`
-    );
-  }
-
-  /**
-   * Returns the resolved shared localizations options for the given input. The default namespace is
-   * the constant `TRANSLATION_NAMESPACE`.
-   */
-  function resolveSharedNameAndDescription(
-    options: SharedNameAndDescription
-  ): SharedNameAndDescriptionLocalized {
-    return {
-      description: executeLocalizationFn(options.description),
-      nameLocalizations: getLocalizationMap({ input: options.name }),
-      descriptionLocalizations: getLocalizationMap({ input: options.description }),
-    };
-  }
-
-  /**
-   * Returns the preferred locale of the user in the given interaction. Falls back to the default
-   * locale if the user doesn't have a preferred locale.
-   */
-  export function getPreferredLocale(interaction: Interaction): Locales {
-    if (Object.keys(loadedLocales).includes(interaction.locale)) {
-      return interaction.locale as Locales;
-    }
-
-    if (interaction.inGuild() && Object.keys(loadedLocales).includes(interaction.guildLocale)) {
-      return interaction.guildLocale as Locales;
-    }
-
-    return BASE_LOCALE;
-  }
-
-  export function SlashCommand(input: SharedNameAndDescription): MethodDecoratorEx {
-    return (target, key, descriptor) => {
-      Slash(
-        executeLocalizationFn(input.name).toString(),
-        resolveSharedNameAndDescription({ name: input.name, description: input.description })
-      )(target, key, descriptor);
-    };
-  }
-
-  export function SlashCommandOption(
-    options: SlashOptionOptionsWithoutNamingFields & SharedNameAndDescription
-  ): ParameterDecoratorEx {
-    return (target, key, descriptor) => {
-      // @ts-ignore
-      SlashOption(executeLocalizationFn(options.name).toString(), {
-        ...options,
-        ...resolveSharedNameAndDescription({
-          name: options.name,
-          description: options.description,
-        }),
-      })(target, key, descriptor);
-    };
-  }
-
-  export function SlashCommandGroup(options: SlashCommandGroupOptions): ClassDecoratorEx {
-    return (target, key, descriptor) => {
-      SlashGroup({
-        root: options.root,
-        name: executeLocalizationFn(options.name).toString(),
-        ...resolveSharedNameAndDescription({
-          name: options.name,
-          description: options.description,
-        }),
-      })(target, key, descriptor);
-
-      if (options.markAllAsThisGroup) {
-        SlashGroup(executeLocalizationFn(options.name).toString())(target, key, descriptor);
-      }
-    };
-  }
+/**
+ * Changes the locale used as default for slash commands-related localization.
+ * @param locale New default locale.
+ */
+export function setDefaultLocale(locale: Locales): void {
+  defaultLocale = locale;
 }
 
-/** Extended decorator for the `discordx/Slash`. Adds localization support. */
-export const SlashCommand = DiscordLocalization.SlashCommand;
+/**
+ * Executes a localization function and returns the localized string.
+ * @param path Path to a valid localization key.
+ * @param locale Locale to use. If not provided, the default locale is used.
+ * @throws If the path is pointing to an invalid localization key.
+ * @throws If the locale is not a function or have more than 0 arguments.
+ */
+export function executeLocalizationPath(
+  path: LocalizationKeyPath,
+  locale: Locales = defaultLocale
+): LocalizedString {
+  const localizedStringParts: unknown = path
+    .split(LOCALIZATION_KEY_PATH_SEPARATOR)
+    .reduce((prev, curr) => prev[curr], L[locale][LOCALIZATION_SLASH_COMMANDS_NAMESPACE]);
 
-/** Extended decorator for the `discordx/SlashOption`. Adds localization support. */
-export const SlashCommandOption = DiscordLocalization.SlashCommandOption;
+  if (typeof localizedStringParts === "undefined") {
+    throw new Error(`Localization key not found: ${path}`);
+  }
 
-/** Extended decorator for the `discordx/SlashGroup`. Adds localization support. */
-export const SlashCommandGroup = DiscordLocalization.SlashCommandGroup;
+  if (typeof localizedStringParts !== "function") {
+    throw new Error(`Localization key is not a function: ${path}`);
+  }
+
+  if (localizedStringParts.length > 0) {
+    throw new Error(`Localization key is a function with more than one argument: ${path}`);
+  }
+
+  return localizedStringParts();
+}
+
+/**
+ * Gets the localization map for a given localization key.
+ * @param path Path to a valid localization key.
+ * @returns A discord.js localization map for the given path.
+ * @throws If there are no localizations for the given path (probably because all are nullish).
+ */
+export function getDiscordLocalizationMap(path: LocalizationKeyPath): LocalizationMap {
+  const localizationMap: LocalizationMap = {};
+
+  for (const locale of Object.keys(loadedLocales)) {
+    localizationMap[locale] = executeLocalizationPath(path, locale as Locales);
+  }
+
+  for (const localization of Object.keys(localizationMap)) {
+    if (isNullish(localization)) {
+      delete localizationMap[localization];
+    }
+  }
+
+  if (Object.keys(localizationMap).length === 0) {
+    throw new Error(`All locales are nullish at: ${path}`);
+  }
+
+  return localizationMap;
+}
+
+/**
+ * Gets the preferred locale for a given interaction. Falls back to the default locale.
+ * @param interaction The interaction to get the preferred locale from.
+ * @returns The preferred locale of the interaction.
+ */
+export function getPreferredLocaleFromInteraction(interaction: Interaction): Locales {
+  if (Object.keys(loadedLocales).includes(interaction.locale)) {
+    return interaction.locale as Locales;
+  }
+
+  if (interaction.inGuild() && Object.keys(loadedLocales).includes(interaction.guildLocale)) {
+    return interaction.guildLocale as Locales;
+  }
+
+  return defaultLocale;
+}
+
+/**
+ * Creates a slash command with localization support.
+ * @param name Path to the name localization key.
+ * @param description Path to the description localization key.
+ * @returns A decorator extending `discordx/Slash`.
+ */
+export function SlashCommand(
+  name: LocalizationKeyPath,
+  description: LocalizationKeyPath
+): MethodDecoratorEx {
+  return (target, key, descriptor) => {
+    Slash(executeLocalizationPath(name), getSharedNameAndDescription(name, description))(
+      target,
+      key,
+      descriptor
+    );
+  };
+}
+
+/**
+ * Adds a option for a slash command.
+ * @param name Path to the name localization key.
+ * @param description Path to the description localization key.
+ * @param options Extra options for the slash command option.
+ * @returns A decorator extending `discordx/SlashOption`.
+ */
+export function SlashCommandOption(
+  name: LocalizationKeyPath,
+  description: LocalizationKeyPath,
+  options?: SlashOptionOptionsWithoutNamingFields
+): ParameterDecoratorEx {
+  return (target, key, descriptor) => {
+    SlashOption(executeLocalizationPath(name), {
+      ...(options as SlashOptionOptions),
+      ...getSharedNameAndDescription(name, description),
+    })(target, key, descriptor);
+  };
+}
+
+/**
+ * Creates a slash command group with localization support and some extra options.
+ * @param name Path to the name localization key.
+ * @param description Path to the description localization key.
+ * @param options Extra options for the slash command group.
+ * @returns A decorator extending `discordx/SlashGroup`.
+ */
+export function SlashCommandGroup(
+  name: LocalizationKeyPath,
+  description: LocalizationKeyPath,
+  options?: SlashCommandGroupOptions
+): ClassDecoratorEx {
+  return (target, key, descriptor) => {
+    SlashGroup({
+      root: options.root,
+      name: executeLocalizationPath(name),
+      ...getSharedNameAndDescription(name, description),
+    })(target, key, descriptor);
+
+    if (options.markAllAsThisGroup) {
+      SlashGroup(executeLocalizationPath(name))(target, key, descriptor);
+    }
+  };
+}
+
+/** @internal */
+function isNullish<T>(value: T | undefined | null | ""): boolean {
+  return value === undefined || value === null || value === "";
+}
+
+/** @internal */
+function getSharedNameAndDescription(
+  name: LocalizationKeyPath,
+  description: LocalizationKeyPath
+): SharedNameAndDescription {
+  return {
+    description: executeLocalizationPath(description),
+    nameLocalizations: getDiscordLocalizationMap(name),
+    descriptionLocalizations: getDiscordLocalizationMap(description),
+  };
+}

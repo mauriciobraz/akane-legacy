@@ -8,7 +8,7 @@ import { PrismaClient, Punishment, PunishmentType } from "@prisma/client";
 import L from "../../locales/i18n-node";
 import { GuildGuards } from "../../guards/guild";
 import {
-  DiscordLocalization,
+  getPreferredLocaleFromInteraction,
   SlashCommand,
   SlashCommandOption,
 } from "../../utils/discord-localization";
@@ -34,16 +34,14 @@ const PunishmentEmojis: { [key in PunishmentType]: string } = {
 export class ModerationInfractions {
   private readonly prisma = Container.get(PrismaClient);
 
-  @SlashCommand({ name: "INFRACTIONS.NAME", description: "INFRACTIONS.DESCRIPTION" })
+  @SlashCommand("INFRACTIONS.NAME", "INFRACTIONS.DESCRIPTION")
   @Guard(
     GuildGuards.inGuild(),
     GuildGuards.hasPermissions(["MODERATE_MEMBERS"]),
     GuildGuards.hasPermissions(["MODERATE_MEMBERS"], true)
   )
   async handleInfractions(
-    @SlashCommandOption({
-      name: "INFRACTIONS.OPTIONS.USER.NAME",
-      description: "INFRACTIONS.OPTIONS.USER.DESCRIPTION",
+    @SlashCommandOption("INFRACTIONS.OPTIONS.USER.NAME", "INFRACTIONS.OPTIONS.USER.DESCRIPTION", {
       type: "USER",
     })
     user: GuildMember,
@@ -54,7 +52,7 @@ export class ModerationInfractions {
       await interaction.deferReply({ ephemeral: true });
     }
 
-    const LL = L[DiscordLocalization.getPreferredLocale(interaction)];
+    const LL = L[getPreferredLocaleFromInteraction(interaction)];
 
     const userSaved = await this.prisma.user.upsert({
       where: { userId: user.id },
@@ -120,7 +118,7 @@ export class ModerationInfractions {
         const id = `[#${punishment.id.toString().padStart(idPadSize, "0")}](https://google.com)`;
 
         const timestamp = punishment.createdAt.toLocaleDateString(
-          DiscordLocalization.getPreferredLocale(options.interaction)
+          getPreferredLocaleFromInteraction(options.interaction)
         );
 
         let reason: string =

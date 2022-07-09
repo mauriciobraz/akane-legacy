@@ -3,7 +3,7 @@ import type { GuildMember, Interaction, PermissionString } from "discord.js";
 
 import L from "../locales/i18n-node";
 import { DiscordApiTypes } from "../utils/discord-api-types";
-import { DiscordLocalization } from "../utils/discord-localization";
+import { getPreferredLocaleFromInteraction } from "../utils/discord-localization";
 
 export namespace GuildGuards {
   /**
@@ -18,7 +18,7 @@ export namespace GuildGuards {
       }
 
       if (!silent && interaction.isRepliable()) {
-        const LL = L[DiscordLocalization.getPreferredLocale(interaction)].ERRORS;
+        const LL = L[getPreferredLocaleFromInteraction(interaction)].ERRORS;
 
         if (!interaction.deferred) {
           await interaction.deferReply({ ephemeral: true });
@@ -63,7 +63,7 @@ export namespace GuildGuards {
         }
 
         if (!silent && interaction.isRepliable()) {
-          const LL = L[DiscordLocalization.getPreferredLocale(interaction)].ERRORS;
+          const LL = L[getPreferredLocaleFromInteraction(interaction)].ERRORS;
 
           if (!interaction.deferred) {
             await interaction.deferReply({ ephemeral: true });
@@ -79,7 +79,7 @@ export namespace GuildGuards {
       }
 
       if (!silent && interaction.isRepliable()) {
-        const LL = L[DiscordLocalization.getPreferredLocale(interaction)].ERRORS;
+        const LL = L[getPreferredLocaleFromInteraction(interaction)].ERRORS;
 
         if (!interaction.deferred) {
           await interaction.deferReply({ ephemeral: true });
@@ -108,7 +108,7 @@ export namespace GuildGuards {
   ): Promise<boolean> {
     if (member.user.id === target.user.id) {
       if (!silent && interaction.isRepliable()) {
-        const LL = L[DiscordLocalization.getPreferredLocale(interaction)].ERRORS;
+        const LL = L[getPreferredLocaleFromInteraction(interaction)].ERRORS;
 
         if (!interaction.deferred) {
           await interaction.deferReply({ ephemeral: true });
@@ -124,7 +124,7 @@ export namespace GuildGuards {
 
     if (comparedPosition <= 0) {
       if (!silent && interaction.isRepliable()) {
-        const LL = L[DiscordLocalization.getPreferredLocale(interaction)].ERRORS;
+        const LL = L[getPreferredLocaleFromInteraction(interaction)].ERRORS;
 
         if (!interaction.deferred) {
           await interaction.deferReply({ ephemeral: true });

@@ -1,4 +1,5 @@
 import Container from "typedi";
+import { PrismaClient } from "@prisma/client";
 import {
   MessageActionRow,
   MessageButton,
@@ -7,13 +8,12 @@ import {
   type GuildMember,
 } from "discord.js";
 import { Discord, Guard } from "discordx";
-import { PrismaClient } from "@prisma/client";
 
 import L from "../../locales/i18n-node";
 import { GuildGuards } from "../../guards/guild";
 import { DiscordApiTypes } from "../../utils/discord-api-types";
 import {
-  DiscordLocalization,
+  getPreferredLocaleFromInteraction,
   SlashCommand,
   SlashCommandOption,
 } from "../../utils/discord-localization";
@@ -22,45 +22,52 @@ import {
 export class ModerationBan {
   private readonly prisma = Container.get(PrismaClient);
 
-  @SlashCommand({
-    name: "BAN.NAME",
-    description: "BAN.DESCRIPTION",
-  })
+  @SlashCommand("BAN.NAME", "BAN.DESCRIPTION")
   @Guard(
     GuildGuards.inGuild(),
     GuildGuards.hasPermissions(["BAN_MEMBERS"]),
     GuildGuards.hasPermissions(["BAN_MEMBERS"], true)
   )
   async handleBan(
-    @SlashCommandOption({
-      name: "BAN.OPTIONS.USER.NAME",
-      description: "BAN.OPTIONS.USER.DESCRIPTION",
+    @SlashCommandOption("BAN.OPTIONS.USER.NAME", "BAN.OPTIONS.USER.DESCRIPTION", {
       type: "USER",
     })
     member: GuildMember,
 
-    @SlashCommandOption({
-      name: "BAN.OPTIONS.REASON.NAME",
-      description: "BAN.OPTIONS.REASON.DESCRIPTION",
+    // @SlashCommandOption({
+    //   name: "BAN.OPTIONS.REASON.NAME",
+    //   description: "BAN.OPTIONS.REASON.DESCRIPTION",
+    //   type: "STRING",
+    //   required: false,
+    // })
+    @SlashCommandOption("BAN.OPTIONS.REASON.NAME", "BAN.OPTIONS.REASON.DESCRIPTION", {
       type: "STRING",
       required: false,
     })
     reason: string | null = null,
 
-    @SlashCommandOption({
-      name: "BAN.OPTIONS.SILENT.NAME",
-      description: "BAN.OPTIONS.SILENT.DESCRIPTION",
+    // @SlashCommandOption({
+    //   name: "BAN.OPTIONS.SILENT.NAME",
+    //   description: "BAN.OPTIONS.SILENT.DESCRIPTION",
+    //   type: "BOOLEAN",
+    //   required: false,
+    // })
+    @SlashCommandOption("BAN.OPTIONS.SILENT.NAME", "BAN.OPTIONS.SILENT.DESCRIPTION", {
       type: "BOOLEAN",
       required: false,
     })
     silent: boolean = false,
 
-    @SlashCommandOption({
-      name: "BAN.OPTIONS.TIME.NAME",
-      description: "BAN.OPTIONS.TIME.DESCRIPTION",
+    // @SlashCommandOption({
+    //   name: "BAN.OPTIONS.TIME.NAME",
+    //   description: "BAN.OPTIONS.TIME.DESCRIPTION",
+    //   type: "NUMBER",
+    //   required: false,
+    //   minValue: 1,
+    // })
+    @SlashCommandOption("BAN.OPTIONS.TIME.NAME", "BAN.OPTIONS.TIME.DESCRIPTION", {
       type: "NUMBER",
       required: false,
-      minValue: 1,
     })
     time: number | undefined,
 
@@ -70,7 +77,7 @@ export class ModerationBan {
       await interaction.deferReply({ ephemeral: true });
     }
 
-    const LL = L[DiscordLocalization.getPreferredLocale(interaction)];
+    const LL = L[getPreferredLocaleFromInteraction(interaction)];
 
     const authorMember = await DiscordApiTypes.fromGuildMember(
       interaction.member as GuildMember,

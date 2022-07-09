@@ -28,8 +28,8 @@ export type DeepReplace<Obj, Type> = {
  * }>;
  * ```
  */
-export type ObjectKeysToStringPath<T> = T extends object
+export type PathArray<T> = T extends object
   ? {
-      [K in keyof T]: [K, ...ObjectKeysToStringPath<T[K]>];
+      [K in keyof T]: [K, ...PathArray<T[K]>];
     }[keyof T]
   : [];
