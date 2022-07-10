@@ -10,6 +10,7 @@ import { Option } from "oxide.ts";
 import { resolve } from "path";
 import { Logger } from "tslog";
 
+import { initFormatters } from "./locales/formatters";
 import { locales, namespaces } from "./locales/i18n-util";
 import { loadNamespaceAsync } from "./locales/i18n-util.async";
 import type { Callback } from "./types";
@@ -22,6 +23,8 @@ async function main(): Promise<void> {
 
   await Promise.all(
     locales.map(async locale => {
+      initFormatters(locale);
+
       await Promise.all(
         namespaces.map(async namespace => await loadNamespaceAsync(locale, namespace))
       );

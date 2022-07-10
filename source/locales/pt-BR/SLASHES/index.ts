@@ -72,6 +72,40 @@ const pt_BR_slashes: BaseTranslation = {
       },
     },
   },
+
+  MUTE: {
+    NAME: "silenciar",
+    DESCRIPTION: "Silencia um usuário deste servidor por um tempo específico.",
+    OPTIONS: {
+      USER: {
+        NAME: "usuário",
+        DESCRIPTION: "Usuário que será silenciado.",
+      },
+      REASON: {
+        NAME: "motivo",
+        DESCRIPTION: "Motivo pelo qual este usuário está sendo silenciado.",
+      },
+      TIME: {
+        NAME: "tempo",
+        DESCRIPTION: "Tempo de silenciamento do usuário (em minutos) (0 = indefinido).",
+      },
+    },
+  },
+
+  UNMUTE: {
+    NAME: "dessilenciar",
+    DESCRIPTION: "Dessilencia um usuário deste servidor.",
+    OPTIONS: {
+      USER: {
+        NAME: "usuário",
+        DESCRIPTION: "Usuário que será dessilenciado.",
+      },
+      REASON: {
+        NAME: "motivo",
+        DESCRIPTION: "Motivo pelo qual este usuário está sendo dessilenciado.",
+      },
+    },
+  },
 };
 
 export default pt_BR_slashes;

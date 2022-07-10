@@ -4,7 +4,7 @@ import type { Locales, Formatters } from "./i18n-types";
 export const initFormatters: FormattersInitializer<Locales, Formatters> = (locale: Locales) => {
   return {
     // Formatters functions, see: https://github.com/ivanhofer/typesafe-i18n/tree/main/packages/formatters
-    join: value => {
+    joinArray: value => {
       if (Array.isArray(value)) {
         return value
           .map((v, i) => {
