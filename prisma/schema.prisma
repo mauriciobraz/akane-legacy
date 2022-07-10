@@ -13,30 +13,36 @@ datasource db {
 model Guild {
   id String @id @default(uuid())
 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   Users       User[]
   Punishments Punishment[]
 
   guildId String @unique
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 }
 
 model User {
   id String @id @default(uuid())
 
-  userId String @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   Guilds           Guild[]
   Punishments      Punishment[]
   PunishmentsGiven Punishment[] @relation(name: "PunishmentPunisher")
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  userId String @unique
 }
 
 model Punishment {
   id String @id @default(uuid())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  Guild   Guild  @relation(fields: [guildId], references: [id])
+  guildId String
 
   User   User   @relation(fields: [userId], references: [id])
   userId String
@@ -44,21 +50,15 @@ model Punishment {
   UserPunisher User   @relation(fields: [punisherId], references: [id], name: "PunishmentPunisher")
   punisherId   String
 
-  Guild   Guild  @relation(fields: [guildId], references: [id])
-  guildId String
-
+  time   DateTime?
   type   PunishmentType
   reason String
-  time   DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 }
 
 enum PunishmentType {
-  MUTE
-  WARN
-  KICK
   BAN
+  KICK
+  MUTE
   REVERT
+  WARN
 }
