@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import {
+  Collection,
   MessageActionRow,
   MessageButton,
   MessageSelectMenu,
@@ -64,6 +65,7 @@ export namespace Inquirer {
    * Ask the user a question using buttons and return the user's response.
    * @param interaction The interaction to use for the inquirer.
    * @param options Configuration options for the inquirer.
+   * @returns The id of the selected choice.
    */
   export async function askUsingButtons<
     T extends ButtonInquirerOptions,
@@ -162,6 +164,12 @@ export namespace Inquirer {
     postAnswerMessage?: string;
   }
 
+  /**
+   * Ask the user a question using a select menu and return the user's response.
+   * @param interaction The interaction to use for the inquirer.
+   * @param options Configuration options for the inquirer.
+   * @returns The id of the selected choice.
+   */
   export async function askUsingSelectMenu<
     T extends SelectInquirerOptions,
     ReturnType = T["choices"][number]["id"]
@@ -251,6 +259,67 @@ export namespace Inquirer {
     }
 
     return choice.id as unknown as ReturnType;
+  }
+
+  export interface AskMessageInquirerOptions extends Omit<BaseOptions<unknown>, "choices"> {
+    /** Maximum number of messages to retrieve. */
+    maxMessages?: number;
+
+    /** Timeout for the message. */
+    timeout?: number;
+
+    /** Delete the message used to ask the user a question. */
+    deleteQuestion?: boolean;
+
+    /** Delete the retrieved messages after receiving the answer. */
+    deleteRetrievedMessages?: boolean;
+  }
+
+  export async function askMessages<T extends AskMessageInquirerOptions>(
+    interaction: RepliableInteraction<CacheType>,
+    options: T
+  ): Promise<Collection<string, Message>> {
+    const channel =
+      options.context === Context.Guild
+        ? interaction.channel
+        : interaction.user.dmChannel || (await interaction.user.createDM());
+
+    if (!channel.isText()) {
+      throw new Error("Cannot send message to non-text channel.");
+    }
+
+    if (interaction.inGuild() && !interaction.deferred) {
+      await interaction.deferReply({ ephemeral: true });
+    }
+
+    const message = (
+      options.context === Context.Guild
+        ? await interaction.editReply(options.question)
+        : await channel.send(options.question)
+    ) as Message<boolean>;
+
+    const messages = await channel.awaitMessages({
+      max: options.maxMessages,
+      time: options.timeout,
+      errors: ["time"],
+      filter: message => message.author.id === interaction.user.id,
+    });
+
+    const messagesClone = messages.clone();
+
+    if (options.deleteRetrievedMessages) {
+      for await (const [, message] of messages) {
+        await message.delete();
+      }
+    }
+
+    if (options.deleteQuestion && options.context === Context.DM) {
+      if (message.deletable) {
+        await message.delete();
+      }
+    }
+
+    return messagesClone;
   }
 
   /**

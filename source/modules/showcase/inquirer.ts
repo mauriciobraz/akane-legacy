@@ -86,4 +86,34 @@ export class Showcase {
       setDisabledWhenDone: true,
     });
   }
+
+  @Slash("ask-messages", {
+    description: "Espera o usuário enviar algumas mensagens.",
+  })
+  async askMessages(
+    @SlashOption("dm", {
+      description: "Pergunta ao usuário via DM.",
+      type: "BOOLEAN",
+      required: false,
+    })
+    dm: boolean = false,
+
+    interaction: CommandInteraction
+  ): Promise<void> {
+    if (!interaction.deferred) {
+      await interaction.deferReply({ ephemeral: true });
+    }
+
+    const selected = await Inquirer.askMessages(interaction, {
+      question: "Cite o nome de dois amigos.",
+      maxMessages: 2,
+      context: dm ? Context.DM : Context.Guild,
+      deleteRetrievedMessages: true,
+      timeout: 10_000,
+    });
+
+    await interaction.editReply(
+      `Legal, seus amigos são ${selected.map(m => m.author.username).join(", ")}.`
+    );
+  }
 }
