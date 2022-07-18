@@ -2,6 +2,8 @@ import { randomUUID } from "crypto";
 import {
   MessageActionRow,
   MessageButton,
+  MessageSelectMenu,
+  MessageSelectOptionData,
   type CacheType,
   type Interaction,
   type InteractionResponseFields,
@@ -31,6 +33,11 @@ export namespace Inquirer {
     id: string | number | boolean;
   }
 
+  type RepliableInteraction<Type extends CacheType | undefined = undefined> = Interaction<Type> &
+    InteractionResponseFields<Type>;
+
+  const IdSeparator = "&";
+
   export interface ButtonValue extends BaseValue {
     /** Label to display on the button. */
     label: string;
@@ -52,11 +59,6 @@ export namespace Inquirer {
      */
     postAnswerMessage?: string;
   }
-
-  type RepliableInteraction<Type extends CacheType | undefined = undefined> = Interaction<Type> &
-    InteractionResponseFields<Type>;
-
-  const IdSeparator = "&";
 
   /**
    * Ask the user a question using buttons and return the user's response.
@@ -132,16 +134,142 @@ export namespace Inquirer {
     }
 
     const [, choiceUniqueId] = answer.customId.split(IdSeparator);
+    return getChoiceById(options.choices, choiceUniqueId).id as unknown as ReturnType;
+  }
 
-    return options.choices.find(choice => {
-      if (typeof choice.id === "string") {
-        return choice.id === choiceUniqueId;
-      } else if (typeof choice.id === "number") {
-        return choice.id === Number(choiceUniqueId);
-      } else if (typeof choice.id === "boolean") {
-        return choice.id === Boolean(choiceUniqueId);
+  export interface SelectValue extends BaseValue {
+    /** Label to display on the button. */
+    label: string;
+
+    /** Description to display on the choice. */
+    description?: string;
+
+    /** Emoji to display on the choice. */
+    emoji?: string;
+  }
+
+  export interface SelectInquirerOptions extends BaseOptions<SelectValue> {
+    /** Select menu's placeholder text. */
+    placeholder: string;
+
+    /** Should the menu be disabled? */
+    setDisabledWhenDone?: boolean;
+
+    /**
+     * Message to edit the original message with when the user selects this button. When undefined,
+     * the message will be deleted
+     */
+    postAnswerMessage?: string;
+  }
+
+  export async function askUsingSelectMenu<
+    T extends SelectInquirerOptions,
+    ReturnType = T["choices"][number]["id"]
+  >(interaction: RepliableInteraction<CacheType>, options: T): Promise<ReturnType> {
+    const uuid = randomUUID();
+
+    const channel =
+      options.context === Context.Guild
+        ? interaction.channel
+        : interaction.user.dmChannel || (await interaction.user.createDM());
+
+    if (!channel.isText()) {
+      throw new Error("Cannot send message to non-text channel.");
+    }
+
+    if (interaction.inGuild() && !interaction.deferred) {
+      await interaction.deferReply({ ephemeral: true });
+    }
+
+    const opts = options.choices.map(
+      (choice): MessageSelectOptionData => ({
+        label: choice.label,
+        value: choice.id.toString(),
+        description: choice.description,
+        emoji: choice.emoji,
+      })
+    );
+
+    const selectMenu = new MessageSelectMenu()
+      .setPlaceholder(options.placeholder)
+      .setCustomId(uuid)
+      .setOptions(opts);
+
+    const actionRow = new MessageActionRow().addComponents(selectMenu);
+
+    const message = (
+      options.context === Context.Guild
+        ? await interaction.editReply({
+            components: [actionRow],
+            content: options.question,
+          })
+        : await channel.send({
+            components: [actionRow],
+            content: options.question,
+          })
+    ) as Message<boolean>;
+
+    const answer = await channel.awaitMessageComponent({
+      componentType: "SELECT_MENU",
+      filter: component => component.customId === uuid && component.user.id === interaction.user.id,
+    });
+
+    await answer.deferUpdate();
+
+    if (options.postAnswerMessage) {
+      if (options.setDisabledWhenDone) {
+        selectMenu.setDisabled(true);
       }
-    }).id as unknown as ReturnType;
+
+      options.context === Context.Guild
+        ? await interaction.editReply({
+            components: [new MessageActionRow().addComponents(selectMenu)],
+            content: options.postAnswerMessage,
+          })
+        : await message.edit({
+            components: [new MessageActionRow().addComponents(selectMenu)],
+            content: options.postAnswerMessage,
+          });
+    } else {
+      if (options.context === Context.Guild) {
+        if (options.setDisabledWhenDone) {
+          selectMenu.setDisabled(true);
+
+          await interaction.editReply({
+            components: [new MessageActionRow().addComponents(selectMenu)],
+          });
+        }
+      } else {
+        await message.delete();
+      }
+    }
+
+    const choice = getChoiceById(options.choices, answer.values[0]);
+
+    if (!choice) {
+      throw new Error("No choice found for selected value.");
+    }
+
+    return choice.id as unknown as ReturnType;
+  }
+
+  /**
+   * Utility function to get the id of a choice from a unique id.
+   * @param choices Array of choices to choose from.
+   * @param choice Unique ID of the choice to find.
+   * @returns The unique ID of the found choice.
+   * @internal
+   */
+  function getChoiceById<T extends BaseValue>(choices: T[], choice: any): T {
+    return choices.find(c => {
+      if (typeof c.id === "string") {
+        return c.id === choice;
+      } else if (typeof c.id === "number") {
+        return c.id === parseInt(choice, 10);
+      } else if (typeof c.id === "boolean") {
+        return c.id === Boolean(c);
+      }
+    });
   }
 }
 

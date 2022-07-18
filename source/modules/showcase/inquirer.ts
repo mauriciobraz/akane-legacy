@@ -10,7 +10,11 @@ export class Showcase {
     description: "Pergunta a um usuário sobre um assunto e mostra um botão para ele escolher.",
   })
   async askButton(
-    @SlashOption("dm", { description: "Pergunta ao usuário via DM.", type: "BOOLEAN" })
+    @SlashOption("dm", {
+      description: "Pergunta ao usuário via DM.",
+      type: "BOOLEAN",
+      required: false,
+    })
     dm: boolean = false,
 
     interaction: CommandInteraction
@@ -31,10 +35,55 @@ export class Showcase {
       ],
       context: dm ? Context.DM : Context.Guild,
     });
+  }
 
-    await interaction.followUp({
-      content: `You selected: ${selected}`,
-      ephemeral: true,
+  @Slash("ask-select-menu", {
+    description: "Pergunta a um usuário sobre um assunto e mostra um menu para ele escolher.",
+  })
+  async askSelectMenu(
+    @SlashOption("dm", {
+      description: "Pergunta ao usuário via DM.",
+      type: "BOOLEAN",
+      required: false,
+    })
+    dm: boolean = false,
+
+    interaction: CommandInteraction
+  ): Promise<void> {
+    if (!interaction.deferred) {
+      await interaction.deferReply({ ephemeral: true });
+    }
+
+    const selected = await Inquirer.askUsingSelectMenu(interaction, {
+      question: "O que é Lorem Ipsum?",
+      postAnswerMessage:
+        '*"Não há ninguém que ame a dor por si só, que a busque e queira tê-la, simplesmente por ser dor..."*',
+      placeholder: "📗 Escolha uma opção",
+      choices: [
+        {
+          id: 1,
+          emoji: "📘",
+          label: "De onde ele vem?",
+          description:
+            "Ao contrário do que se acredita, Lorem Ipsum não é simplesmente um texto randômico.",
+        },
+        {
+          id: 2,
+          emoji: "📚",
+          label: "Porque nós o usamos?",
+          description:
+            "É um fato conhecido de todos que um leitor se distrairá com o conteúdo de texto legível...",
+        },
+        {
+          id: 3,
+          emoji: "📝",
+          label: "Onde posso conseguí-lo?",
+          description:
+            "Existem muitas variações disponíveis de passagens de Lorem Ipsum, mas a maioria sofreu...",
+        },
+      ],
+      context: dm ? Context.DM : Context.Guild,
+      setDisabledWhenDone: true,
     });
   }
 }
