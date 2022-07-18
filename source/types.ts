@@ -1,14 +1,16 @@
-import { Client as ClientJS } from "discord.js";
-import { Client as ClientX } from "discordx";
-import { Object } from "ts-toolbelt";
+import type { Client as ClientJS } from "discord.js";
+import type { Client as ClientX } from "discordx";
 
-export type Client<T extends boolean = false> = ClientX & ClientJS<T>;
+/** Merge of the Discord.js and DiscordX client types. */
+export type MergeClient<T extends boolean = false> = ClientX & ClientJS<T>;
 
-export type Callback<T, Return> = (args: T) => Return;
+/** Loose autocomplete for a string type. Useful for typed generics. */
+export type LooseAutocomplete<T extends string> = T | Omit<string, T>;
 
-/**
- * Changes all the types from an object to another type.
- */
+/** All debuggers that Akane can use. */
+export type Debugger = LooseAutocomplete<"*" | "DiscordJS" | "PrismaClient">;
+
+/** Changes all the types from an object to another type. */
 export type DeepReplace<Obj, Type> = {
   [K in keyof Obj]: Obj[K][keyof Obj[K]] extends Type
     ? Type
@@ -17,17 +19,7 @@ export type DeepReplace<Obj, Type> = {
     : Obj[K];
 };
 
-/**
- * Transform a object keys into arrays of their keys indicating it's path in the object.
- * @example
- * ```typescript
- * // $ExpectType ["a"] | ["b", "c"] | ["b", "d", "e"]
- * type MyObject = ObjectKeysToStringPath<{
- *   a: string;
- *   b: { c: string; d: { e: string } }
- * }>;
- * ```
- */
+/** Transform a object keys into arrays of their keys indicating it's path in the object. */
 export type PathArray<T> = T extends object
   ? {
       [K in keyof T]: [K, ...PathArray<T[K]>];

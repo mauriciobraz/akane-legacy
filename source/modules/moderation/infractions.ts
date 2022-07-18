@@ -11,7 +11,7 @@ import {
   getPreferredLocaleFromInteraction,
   SlashCommand,
   SlashCommandOption,
-} from "../../utils/discord-localization";
+} from "../../utils/localization";
 import type { TranslationFunctions } from "../../locales/i18n-types";
 
 interface GeneratePunishmentsPagesOptions {

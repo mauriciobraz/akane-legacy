@@ -15,7 +15,7 @@ import {
   getPreferredLocaleFromInteraction,
   SlashCommand,
   SlashCommandOption,
-} from "../../utils/discord-localization";
+} from "../../utils/localization";
 
 @Discord()
 export class ModerationWarn {

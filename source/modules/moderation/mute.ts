@@ -1,14 +1,14 @@
+import type { CommandInteraction, GuildMember } from "discord.js";
 import { Discord, Guard } from "discordx";
 import { GuildGuards } from "../../guards/guild";
-import type { CommandInteraction, GuildMember } from "discord.js";
 
 import L from "../../locales/i18n-node";
-import { autocompleteTimeString, type AutocompleteTime } from "../../utils/autocomplete-time";
+import { handleAutocompleteTime, type AutocompleteTime } from "../../utils/autocomplete-time";
 import {
   getPreferredLocaleFromInteraction,
   SlashCommand,
   SlashCommandOption,
-} from "../../utils/discord-localization";
+} from "../../utils/localization";
 
 @Discord()
 export class Mute {
@@ -31,7 +31,7 @@ export class Mute {
     reason: string | undefined,
 
     @SlashCommandOption("MUTE.OPTIONS.TIME.NAME", "MUTE.OPTIONS.TIME.DESCRIPTION", {
-      autocomplete: autocompleteTimeString,
+      autocomplete: handleAutocompleteTime,
       required: false,
       type: "STRING",
     })

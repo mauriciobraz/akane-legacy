@@ -1,85 +1,89 @@
-import L from "../locales/i18n-node";
-import { getPreferredLocaleFromInteraction } from "./discord-localization";
 import type { AutocompleteInteraction } from "discord.js";
 
-export enum Time {
-  SECOND = 1000,
-  MINUTE = 60 * SECOND,
-  HOUR = 60 * MINUTE,
-  DAY = 24 * HOUR,
-  WEEK = 7 * DAY,
-  MONTH = 30 * DAY,
-  YEAR = 365 * DAY,
+import L from "../locales/i18n-node";
+import { TranslationFunctions } from "../locales/i18n-types";
+import { getPreferredLocaleFromInteraction } from "./localization";
+
+/** Units of time in milliseconds. */
+export enum TimeUnit {
+  Millisecond = 1000,
+  Second = 60 * TimeUnit.Millisecond,
+  Minute = 60 * TimeUnit.Second,
+  Hour = 24 * TimeUnit.Minute,
+  Day = 7 * TimeUnit.Hour,
+  Week = 30 * TimeUnit.Day,
+  Month = 365 * TimeUnit.Day,
+  Year = 365 * TimeUnit.Day,
 }
 
-export enum MeasurementUnit {
-  SECOND = "s",
-  MINUTE = "m",
-  HOUR = "h",
-  DAY = "d",
-  WEEK = "w",
-  MONTH = "M",
-  YEAR = "y",
+/** String abbreviation for the given time unit. */
+export enum TimeScaleAbbreviation {
+  Second = "s",
+  Minute = "m",
+  Hour = "h",
+  Day = "d",
+  Week = "w",
+  Month = "M",
+  Year = "y",
 }
 
-/** All possible types that an autocomplete can return. */
+/** Autocomplete time string. Example: "1d" */
 export type AutocompleteTime =
-  | `${number}${MeasurementUnit}`
-  | "RESET"
+  | `${number}${TimeScaleAbbreviation}`
   | "EXCEEDED_MAX_LENGTH"
-  | "HELP"
-  | "EMPTY";
+  | "RESET"
+  | "HELP";
 
 /** @internal */
-type Translations = { [key in MeasurementUnit]: string };
+type TimeScaleAbbreviationTranslations = { [key in TimeScaleAbbreviation]: string };
+
+/** @internal */
+const MaximumTimeStringLength = 6;
+
+/** @internal */
+const TimeScaleRegex = /\d+[smhdwMy]/;
 
 /**
- * Autocompletes the time string for the given interaction.
- * @param interaction Interaction to autocomplete the time.
+ * Autocomplete time string. Example: "1d" or "1w".
+ * @param interaction Interaction to use for autocomplete.
  */
-export async function autocompleteTimeString(interaction: AutocompleteInteraction): Promise<void> {
+export async function handleAutocompleteTime(interaction: AutocompleteInteraction): Promise<void> {
   const LL = L[getPreferredLocaleFromInteraction(interaction)];
-
   const focused = interaction.options.getFocused(true);
+  const timeScaleAbbreviationTranslations = getTranslations(LL, focused.value);
 
-  const translations: Translations = {
-    d: LL.COMMON.TIME_d(getNumberFromString(focused.value)),
-    h: LL.COMMON.TIME_h(getNumberFromString(focused.value)),
-    m: LL.COMMON.TIME_m(getNumberFromString(focused.value)),
-    M: LL.COMMON.TIME_M(getNumberFromString(focused.value)),
-    s: LL.COMMON.TIME_s(getNumberFromString(focused.value)),
-    w: LL.COMMON.TIME_w(getNumberFromString(focused.value)),
-    y: LL.COMMON.TIME_y(getNumberFromString(focused.value)),
-  };
-
-  if (focused.type !== "STRING") {
-    throw new Error("To autocomplete a time string, the focused option must be a string.");
-  }
-
-  if (focused.value.length > 6) {
+  // For performance reasons, we only strings that are less than the maximum length.
+  if (focused.value.length > MaximumTimeStringLength) {
     await interaction.respond([
       {
         name: LL.ERRORS.TIME_EXCEEDS_MAX_LENGTH(focused.value.length, 6),
-        value: <AutocompleteTime>"EXCEEDED_MAX_LENGTH",
+        value: "EXCEEDED_MAX_LENGTH",
       },
     ]);
   }
 
+  // By default, "0" indicates reset.
   if (focused.value === "0") {
-    await interaction.respond([{ name: LL.COMMON.AUTOCOMPLETE_RESET(), value: "RESET" }]);
+    await interaction.respond([
+      {
+        name: LL.COMMON.AUTOCOMPLETE_RESET(),
+        value: "RESET",
+      },
+    ]);
   }
 
   // Check if the focused option is a valid time string, so keep it if it is.
-  if (focused.value.match(/\d+[smhdwMy]/)) {
+  if (focused.value.match(TimeScaleRegex)) {
     await interaction.respond([{ name: focused.name, value: focused.value }]);
     return;
   }
 
-  if (focused.value.match(/^\d+$/) && focused.value.length <= 6) {
+  // If the focused option has only numbers, we can suggest the time scale.
+  if (focused.value.match(/^\d+$/) && focused.value.length <= MaximumTimeStringLength) {
     await interaction.respond(
-      Object.values(MeasurementUnit).map(measurement => {
+      Object.values(TimeScaleAbbreviation).map(measurement => {
         return {
-          name: `${focused.value}${measurement} (${translations[measurement]})`,
+          name: `${focused.value}${measurement} (${timeScaleAbbreviationTranslations[measurement]})`,
           value: `${focused.value}${measurement}`,
         };
       })
@@ -90,25 +94,18 @@ export async function autocompleteTimeString(interaction: AutocompleteInteractio
 
   // When the string is empty, we can autocomplete with a help message.
   if (focused.value === "") {
-    await interaction.respond([
-      {
-        name: LL.COMMON.AUTOCOMPLETE_TIME_HELP(
-          Object.values(MeasurementUnit)
-            .map(measurement => translations[measurement])
-            .join(", ")
-        ),
-        value: <AutocompleteTime>"EMPTY",
-      },
-    ]);
+    const helpMessage = LL.COMMON.AUTOCOMPLETE_TIME_HELP(
+      Object.values(TimeScaleAbbreviation)
+        .map(tsa => timeScaleAbbreviationTranslations[tsa])
+        .join(", ")
+    );
 
+    await interaction.respond([{ name: helpMessage, value: "HELP" }]);
     return;
   }
 
   await interaction.respond([
-    {
-      name: LL.COMMON.AUTOCOMPLETE_INVALID_TIME_STRING(),
-      value: <AutocompleteTime>"HELP",
-    },
+    { name: LL.COMMON.AUTOCOMPLETE_INVALID_TIME_STRING(), value: "HELP" },
   ]);
 }
 
@@ -117,27 +114,28 @@ export async function autocompleteTimeString(interaction: AutocompleteInteractio
  * @param value The string time to try get the measurement time for.
  * @returns The time in milliseconds or NaN if the string is not a valid time.
  */
-export function getMeasurementTime(value: string): number {
+export function getTimeUnitFromTimeScaleAbbreviation(value: string): number {
   switch (value.replace(/\d/g, "")) {
-    case MeasurementUnit.SECOND:
-      return Time.SECOND;
+    case TimeScaleAbbreviation.Second:
+      return TimeUnit.Second;
 
-    case MeasurementUnit.MINUTE:
-      return Time.MINUTE;
-    case MeasurementUnit.HOUR:
-      return Time.HOUR;
+    case TimeScaleAbbreviation.Minute:
+      return TimeUnit.Minute;
 
-    case MeasurementUnit.DAY:
-      return Time.DAY;
+    case TimeScaleAbbreviation.Hour:
+      return TimeUnit.Hour;
 
-    case MeasurementUnit.WEEK:
-      return Time.WEEK;
+    case TimeScaleAbbreviation.Day:
+      return TimeUnit.Day;
 
-    case MeasurementUnit.MONTH:
-      return Time.MONTH;
+    case TimeScaleAbbreviation.Week:
+      return TimeUnit.Week;
 
-    case MeasurementUnit.YEAR:
-      return Time.YEAR;
+    case TimeScaleAbbreviation.Month:
+      return TimeUnit.Month;
+
+    case TimeScaleAbbreviation.Year:
+      return TimeUnit.Year;
 
     default:
       return NaN;
@@ -146,19 +144,36 @@ export function getMeasurementTime(value: string): number {
 
 /**
  * Tries to get the time in milliseconds for the given string. Falls back to NaN if the string is not a valid time.
- * @param value The string time to try get the measurement time for.
+ * @param value The string time to try parse.
+ * @returns The time in milliseconds or NaN if the string is not a valid time.
  */
-export function parseMeasurementString(value: AutocompleteTime): number {
-  const measurement = getMeasurementTime(value);
+export function parseAutocompleteTime(value: AutocompleteTime): number {
+  const timeUnit = getTimeUnitFromTimeScaleAbbreviation(value);
 
-  if (isNaN(measurement)) {
+  if (isNaN(timeUnit)) {
     return NaN;
   }
 
-  return Number(value.replace(/\D/g, "")) * measurement;
+  return getNumberFromString(value) * timeUnit;
 }
 
 /** @internal */
 function getNumberFromString(value: string): number {
   return Number(value.replace(/\D/g, ""));
+}
+
+/** @internal */
+function getTranslations(
+  LL: TranslationFunctions,
+  focused: string
+): TimeScaleAbbreviationTranslations {
+  return {
+    s: LL.COMMON.TIME_s(getNumberFromString(focused)),
+    m: LL.COMMON.TIME_m(getNumberFromString(focused)),
+    h: LL.COMMON.TIME_h(getNumberFromString(focused)),
+    d: LL.COMMON.TIME_d(getNumberFromString(focused)),
+    w: LL.COMMON.TIME_w(getNumberFromString(focused)),
+    M: LL.COMMON.TIME_M(getNumberFromString(focused)),
+    y: LL.COMMON.TIME_y(getNumberFromString(focused)),
+  };
 }

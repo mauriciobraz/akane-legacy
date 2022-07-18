@@ -1,9 +1,9 @@
-import { GuardFunction } from "discordx";
+import type { GuardFunction } from "discordx";
 import type { GuildMember, Interaction, PermissionString } from "discord.js";
 
 import L from "../locales/i18n-node";
 import { DiscordApiTypes } from "../utils/discord-api-types";
-import { getPreferredLocaleFromInteraction } from "../utils/discord-localization";
+import { getPreferredLocaleFromInteraction } from "../utils/localization";
 
 export namespace GuildGuards {
   /**

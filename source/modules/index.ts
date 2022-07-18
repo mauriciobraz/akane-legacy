@@ -1,52 +1,68 @@
-// TODO: Trait some DiscordJS API errors globally.
-
 import Container from "typedi";
+import { MessageEmbed } from "discord.js";
 import { Discord, On, Once, type ArgsOf } from "discordx";
 import { Logger } from "tslog";
-import { MessageEmbed } from "discord.js";
 
-import L from "../locales/i18n-node";
-import { getPreferredLocaleFromInteraction } from "../utils/discord-localization";
-import type { Client } from "../types";
+import { isDebuggerEnabled } from "..";
+import type { MergeClient } from "../types";
 
 @Discord()
 export class IndexModule {
   private readonly logger = Container.get(Logger);
 
   @Once("ready")
-  async onceReady(_: ArgsOf<"ready">, client: Client<true>): Promise<void> {
+  async onceReady(_: ArgsOf<"ready">, client: MergeClient<true>): Promise<void> {
     await client.initApplicationCommands();
-
-    this.logger.info(`Logged in as ${client.user.tag}.`);
+    this.logger.info("Successfully connected to Discord API.");
   }
 
   @On("interactionCreate")
-  async onInteractionCreate([i]: ArgsOf<"interactionCreate">, client: Client<true>): Promise<void> {
-    try {
-      await client.executeInteraction(i);
-    } catch (e) {
-      if (e instanceof Error) {
-        this.logger.prettyError(e);
-
-        if (i.isRepliable()) {
-          const LL = L[getPreferredLocaleFromInteraction(i)];
-
-          if (process.env.NODE_ENV === "development") {
-            await i.followUp({
-              embeds: [
-                new MessageEmbed()
-                  .setTitle(e.name)
-                  .setDescription(e.message)
-                  .addField("Stack Trace", e.stack.split("\n").join("\n\n")),
-              ],
-            });
-
-            return;
-          }
-
-          await i.followUp(LL["errors"].UNKNOWN_ERROR());
+  async onInteractionCreate(
+    [interaction]: ArgsOf<"interactionCreate">,
+    client: MergeClient<true>
+  ): Promise<void> {
+    if (isDebuggerEnabled("DiscordJS"))
+      this.logger.info(
+        interaction.isCommand()
+          ? `APPLICATION_COMMAND/${interaction.commandId}/${interaction.commandName}`
+          : interaction.type,
+        {
+          userId: interaction.user.id,
+          guildId: interaction.guildId,
+          channelId: interaction.channelId,
+          interactionId: interaction.id,
+          interactionOptions: interaction.isCommand()
+            ? interaction.options.data.reduce(
+                (acc, curr) => ({ ...acc, [curr.name]: curr.value }),
+                {}
+              )
+            : null,
         }
-      } else this.logger.error(e);
+      );
+
+    try {
+      await client.executeInteraction(interaction);
+    } catch (error) {
+      // If the debugger is enabled, we'll log the error and reply to the user what happened.
+      if (isDebuggerEnabled("DiscordJS")) {
+        if (error instanceof Error && interaction.isRepliable()) {
+          const embed = new MessageEmbed()
+            .setTitle(error.name)
+            .setDescription(error.message)
+            .addFields([
+              {
+                name: "Stack Trace",
+                value: error.stack.split("\n").join("\n\n"),
+              },
+            ]);
+
+          await interaction.followUp({
+            embeds: [embed],
+          });
+        }
+
+        this.logger.error(error);
+      }
     }
   }
 }
