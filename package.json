@@ -7,7 +7,7 @@
       "prepare": "[ -f .env ] || cp .env.example .env",
       "build": "tsc && resolve-tspaths",
       "start": "node build/index.js",
-      "dev": "tsnd --respawn --transpile-only --ignore-watch build/ source/index.ts",
+      "dev": "tsnd --respawn --transpile-only --ignore-watch build/ -r tsconfig-paths/register source/index.ts",
       "generate-i18n": "typesafe-i18n --no-watch"
    },
    "devDependencies": {
