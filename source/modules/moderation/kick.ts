@@ -61,6 +61,8 @@ export class ModerationKick {
 
     const LL = L[getPreferredLocaleFromInteraction(interaction)];
 
+    const guild = interaction.guild || (await interaction.client.guilds.fetch(interaction.guildId));
+
     const proofsArray: string[] = [];
 
     if (proofs) {
@@ -74,10 +76,18 @@ export class ModerationKick {
 
     const authorMember = await DiscordApiTypes.fromGuildMember(
       interaction.member as GuildMember,
-      interaction.guild
+      guild
     );
 
-    if (!(await GuildGuards.hasHigherRole(interaction.guild.me, member, false, interaction))) {
+    const guildMe =
+      guild.me ||
+      (interaction.client.user && (await guild.members.fetch(interaction.client.user.id)));
+
+    if (!guildMe) {
+      throw new Error("Guild me not found");
+    }
+
+    if (!(await GuildGuards.hasHigherRole(guildMe, member, false, interaction))) {
       return;
     }
 
@@ -85,13 +95,13 @@ export class ModerationKick {
       return;
     }
 
-    const guild = await this.prisma.guild.upsert({
+    const guildFromDatabase = await this.prisma.guild.upsert({
       where: { guildId: interaction.guildId },
       create: { guildId: interaction.guildId },
       update: {},
     });
 
-    const user = await this.prisma.user.upsert({
+    const userFromDatabase = await this.prisma.user.upsert({
       where: { userId: member.id },
       create: {
         userId: member.id,
@@ -100,7 +110,7 @@ export class ModerationKick {
       update: {},
     });
 
-    const userPunisher = await this.prisma.user.upsert({
+    const userPunisherFromDatabase = await this.prisma.user.upsert({
       where: { userId: interaction.user.id },
       create: {
         userId: interaction.user.id,
@@ -109,13 +119,14 @@ export class ModerationKick {
       update: {},
     });
 
+    // FIXME: This reason field.
     await this.prisma.punishment.create({
       data: {
-        userId: user.id,
-        punisherId: userPunisher.id,
-        guildId: guild.id,
+        userId: userFromDatabase.id,
+        punisherId: userPunisherFromDatabase.id,
+        guildId: guildFromDatabase.id,
         type: "KICK",
-        reason,
+        reason: reason || "undefined",
       },
     });
 
@@ -126,7 +137,7 @@ export class ModerationKick {
         const warnEmbed = new MessageEmbed()
           .setTitle(
             LL.EMBEDS.MODERATION_KICK_TARGET_NOTIFICATION.TITLE({
-              guild: interaction.guild.name,
+              guild: guild.name,
             })
           )
           .setDescription(

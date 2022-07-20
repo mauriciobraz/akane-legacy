@@ -3,8 +3,8 @@ import { MessageEmbed } from "discord.js";
 import { Discord, On, Once, type ArgsOf } from "discordx";
 import { Logger } from "tslog";
 
-import { isDebuggerEnabled } from "..";
-import type { MergeClient } from "../types";
+import { isDebuggerEnabled } from "@root/index";
+import type { MergeClient } from "@root/types";
 
 @Discord()
 export class IndexModule {
@@ -52,7 +52,7 @@ export class IndexModule {
             .addFields([
               {
                 name: "Stack Trace",
-                value: error.stack.split("\n").join("\n\n"),
+                value: error.stack?.split("\n").join("\n\n") ?? "No stack trace available.",
               },
             ]);
 

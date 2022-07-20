@@ -98,7 +98,11 @@ export class ModerationInfractions {
     const punishmentsChunks = chunk(options.punishments, options.chunkSize || 5);
     const pages: MessageEmbed[] = [];
 
-    const user = await options.interaction.guild.members.fetch(options.userId);
+    const user = await options.interaction.guild?.members.fetch(options.userId);
+
+    if (!user) {
+      return pages;
+    }
 
     const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const last7Days = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
@@ -134,7 +138,7 @@ export class ModerationInfractions {
         .setColor(0x141414)
         .setAuthor({
           name: options.translationFunctions.COMMON.INFRACTIONS_OF({ user: user.user.tag }),
-          iconURL: user.user.avatarURL(),
+          iconURL: user.user.avatarURL() || user.user.defaultAvatarURL,
         })
         .addFields([
           {

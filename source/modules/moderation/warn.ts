@@ -59,6 +59,8 @@ export class ModerationWarn {
 
     const LL = L[getPreferredLocaleFromInteraction(interaction)];
 
+    const guild = interaction.guild || (await interaction.client.guilds.fetch(interaction.guildId));
+
     const proofsArray: string[] = [];
 
     if (proofs) {
@@ -70,13 +72,13 @@ export class ModerationWarn {
       }
     }
 
-    const guild = await this.prisma.guild.upsert({
+    const guildFromDatabase = await this.prisma.guild.upsert({
       where: { guildId: interaction.guildId },
       create: { guildId: interaction.guildId },
       update: {},
     });
 
-    const user = await this.prisma.user.upsert({
+    const userFromDatabase = await this.prisma.user.upsert({
       where: { userId: member.id },
       create: {
         userId: member.id,
@@ -85,7 +87,7 @@ export class ModerationWarn {
       update: {},
     });
 
-    const userPunisher = await this.prisma.user.upsert({
+    const userPunisherFromDatabase = await this.prisma.user.upsert({
       where: { userId: interaction.user.id },
       create: {
         userId: interaction.user.id,
@@ -96,9 +98,9 @@ export class ModerationWarn {
 
     await this.prisma.punishment.create({
       data: {
-        userId: user.id,
-        punisherId: userPunisher.id,
-        guildId: guild.id,
+        userId: userFromDatabase.id,
+        punisherId: userPunisherFromDatabase.id,
+        guildId: guildFromDatabase.id,
         type: "WARN",
         reason,
         proofs: proofsArray,
@@ -112,12 +114,12 @@ export class ModerationWarn {
         const embed = new MessageEmbed()
           .setTitle(
             LL.EMBEDS.MODERATION_WARN_TARGET_NOTIFICATION.TITLE({
-              guild: interaction.guild.name,
+              guild: guild.name,
             })
           )
           .setDescription(
             LL.EMBEDS.MODERATION_WARN_TARGET_NOTIFICATION.DESCRIPTION({
-              guild: interaction.guild.name,
+              guild: guild.name,
               moderator: interaction.user.tag,
               reason: reason ?? LL.ERRORS.NO_REASON_PROVIDED(),
             })

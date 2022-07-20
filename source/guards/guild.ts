@@ -1,9 +1,9 @@
 import type { GuardFunction } from "discordx";
 import type { GuildMember, Interaction, PermissionString } from "discord.js";
 
-import L from "../locales/i18n-node";
-import { DiscordApiTypes } from "../utils/discord-api-types";
-import { getPreferredLocaleFromInteraction } from "../utils/localization";
+import L from "@locales/i18n-node";
+import { DiscordApiTypes } from "@utils/discord-api-types";
+import { getPreferredLocaleFromInteraction } from "@utils/localization";
 
 export namespace GuildGuards {
   /**
@@ -46,10 +46,14 @@ export namespace GuildGuards {
     return async (interaction, _client, next) => {
       if (interaction.guild && interaction.member) {
         if (bot) {
-          if (interaction.guild.me.permissions.has(permissions)) {
+          if (interaction.guild.me?.permissions.has(permissions)) {
             await next();
             return;
           }
+        }
+
+        if (!interaction.guildId) {
+          return;
         }
 
         const member = await DiscordApiTypes.fromGuildMember(
@@ -132,7 +136,7 @@ export namespace GuildGuards {
 
         await interaction.followUp({
           content:
-            member.user.id === interaction.client.user.id
+            member.user.id === interaction.client.user?.id
               ? LL.BOT_ROLE_INFERIOR_THAN_TARGET()
               : LL.TARGET_ROLE_HIGHER(),
         });

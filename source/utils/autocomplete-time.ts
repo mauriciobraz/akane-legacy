@@ -1,7 +1,7 @@
 import type { AutocompleteInteraction } from "discord.js";
 
-import L from "../locales/i18n-node";
-import { TranslationFunctions } from "../locales/i18n-types";
+import L from "@locales/i18n-node";
+import { TranslationFunctions } from "@locales/i18n-types";
 import { getPreferredLocaleFromInteraction } from "./localization";
 
 /** Units of time in milliseconds. */

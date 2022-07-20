@@ -81,7 +81,7 @@ export namespace Inquirer {
         ? interaction.channel
         : interaction.user.dmChannel || (await interaction.user.createDM());
 
-    if (!channel.isText()) {
+    if (!channel?.isText()) {
       throw new Error("Cannot send message to non-text channel.");
     }
 
@@ -89,13 +89,16 @@ export namespace Inquirer {
       await interaction.deferReply({ ephemeral: true });
     }
 
-    const buttons = options.choices.map(choice =>
-      new MessageButton()
+    const buttons = options.choices.map(choice => {
+      const button = new MessageButton()
         .setLabel(choice.label)
         .setStyle(choice.style)
-        .setEmoji(choice.emoji)
-        .setCustomId(`${uuid}${IdSeparator}${choice.id}`)
-    );
+        .setCustomId(`${uuid}${IdSeparator}${choice.id}`);
+
+      if (choice.emoji) button.setEmoji(choice.emoji);
+
+      return button;
+    });
 
     const actionRow = new MessageActionRow().addComponents(buttons);
 
@@ -141,7 +144,7 @@ export namespace Inquirer {
     }
 
     const [, choiceUniqueId] = answer.customId.split(IdSeparator);
-    return getChoiceById(options.choices, choiceUniqueId).id as unknown as ReturnType;
+    return getChoiceById(options.choices, choiceUniqueId)?.id as unknown as ReturnType;
   }
 
   export interface SelectValue extends BaseValue {
@@ -186,7 +189,7 @@ export namespace Inquirer {
         ? interaction.channel
         : interaction.user.dmChannel || (await interaction.user.createDM());
 
-    if (!channel.isText()) {
+    if (!channel?.isText()) {
       throw new Error("Cannot send message to non-text channel.");
     }
 
@@ -289,7 +292,7 @@ export namespace Inquirer {
         ? interaction.channel
         : interaction.user.dmChannel || (await interaction.user.createDM());
 
-    if (!channel.isText()) {
+    if (!channel?.isText()) {
       throw new Error("Cannot send message to non-text channel.");
     }
 
@@ -334,7 +337,7 @@ export namespace Inquirer {
    * @returns The unique ID of the found choice.
    * @internal
    */
-  function getChoiceById<T extends BaseValue>(choices: T[], choice: any): T {
+  function getChoiceById<T extends BaseValue>(choices: T[], choice: any): T | undefined {
     return choices.find(c => {
       if (typeof c.id === "string") {
         return c.id === choice;

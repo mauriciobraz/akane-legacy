@@ -12,10 +12,10 @@ import type { Interaction } from "discord.js";
 import type { Join } from "type-fest";
 import type { LocalizedString } from "typesafe-i18n";
 
-import L from "../locales/i18n-node";
-import { baseLocale, loadedLocales } from "../locales/i18n-util";
-import type { Locales, TranslationFunctions } from "../locales/i18n-types";
-import type { DeepReplace, PathArray } from "../types";
+import L from "@locales/i18n-node";
+import { baseLocale, loadedLocales } from "@locales/i18n-util";
+import type { Locales, TranslationFunctions } from "@locales/i18n-types";
+import type { DeepReplace, PathArray } from "@root/types";
 
 export const LOCALIZATION_SLASH_COMMANDS_NAMESPACE = "SLASHES";
 
@@ -77,6 +77,7 @@ export function executeLocalizationPath(
 ): LocalizedString {
   const localizedStringParts: unknown = path
     .split(LOCALIZATION_KEY_PATH_SEPARATOR)
+    // @ts-ignore
     .reduce((prev, curr) => prev[curr], L[locale][LOCALIZATION_SLASH_COMMANDS_NAMESPACE]);
 
   if (typeof localizedStringParts === "undefined") {
@@ -104,12 +105,12 @@ export function getDiscordLocalizationMap(path: LocalizationKeyPath): Localizati
   const localizationMap: LocalizationMap = {};
 
   for (const locale of Object.keys(loadedLocales)) {
-    localizationMap[locale] = executeLocalizationPath(path, locale as Locales);
+    localizationMap[locale as Locales] = executeLocalizationPath(path, locale as Locales);
   }
 
   for (const localization of Object.keys(localizationMap)) {
     if (isNullish(localization)) {
-      delete localizationMap[localization];
+      delete localizationMap[localization as Locales];
     }
   }
 
@@ -190,12 +191,12 @@ export function SlashCommandGroup(
 ): ClassDecoratorEx {
   return (target, key, descriptor) => {
     SlashGroup({
-      root: options.root,
+      root: options?.root,
       name: executeLocalizationPath(name),
       ...getSharedNameAndDescription(name, description),
     })(target, key, descriptor);
 
-    if (options.markAllAsThisGroup) {
+    if (options?.markAllAsThisGroup) {
       SlashGroup(executeLocalizationPath(name))(target, key, descriptor);
     }
   };

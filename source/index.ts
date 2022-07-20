@@ -12,7 +12,7 @@ import { locales, namespaces } from "./locales/i18n-util";
 import { loadNamespaceAsync } from "./locales/i18n-util.async";
 import { Debugger } from "./types";
 
-export const EnabledDebuggers: Debugger[] = process.env.DEBUG.split(":") || [];
+export const EnabledDebuggers: Debugger[] = process.env.DEBUG?.split(":") || [];
 
 /**
  * Utility function to check if a debugger is enabled or not.
