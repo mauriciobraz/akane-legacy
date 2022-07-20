@@ -9,6 +9,7 @@ import {
   type Interaction,
   type InteractionResponseFields,
   type Message,
+  type MessageOptions,
 } from "discord.js";
 
 export namespace Inquirer {
@@ -19,8 +20,10 @@ export namespace Inquirer {
   }
 
   export interface BaseOptions<T> {
-    /** Question to ask the user. */
-    question: string;
+    // /** Question to ask the user. */
+    // question: string;
+    /** Options to pass to the message. */
+    messageOptions: Omit<MessageOptions, "components">;
 
     /** Available choices for the user to select. */
     choices: T[];
@@ -99,12 +102,12 @@ export namespace Inquirer {
     const message = (
       options.context === Context.Guild
         ? await interaction.editReply({
+            ...options.messageOptions,
             components: [actionRow],
-            content: options.question,
           })
         : await channel.send({
+            ...options.messageOptions,
             components: [actionRow],
-            content: options.question,
           })
     ) as Message<boolean>;
 
@@ -132,7 +135,9 @@ export namespace Inquirer {
             content: options.postAnswerMessage,
           });
     } else {
-      options.context === Context.Guild && (await channel.delete());
+      if (options.context === Context.Guild && message.deletable) {
+        await message.delete();
+      }
     }
 
     const [, choiceUniqueId] = answer.customId.split(IdSeparator);
@@ -208,12 +213,12 @@ export namespace Inquirer {
     const message = (
       options.context === Context.Guild
         ? await interaction.editReply({
+            ...options.messageOptions,
             components: [actionRow],
-            content: options.question,
           })
         : await channel.send({
+            ...options.messageOptions,
             components: [actionRow],
-            content: options.question,
           })
     ) as Message<boolean>;
 
@@ -248,7 +253,7 @@ export namespace Inquirer {
           });
         }
       } else {
-        await message.delete();
+        if (message.deletable) await message.delete();
       }
     }
 
@@ -294,8 +299,8 @@ export namespace Inquirer {
 
     const message = (
       options.context === Context.Guild
-        ? await interaction.editReply(options.question)
-        : await channel.send(options.question)
+        ? await interaction.editReply(options.messageOptions)
+        : await channel.send(options.messageOptions)
     ) as Message<boolean>;
 
     const messages = await channel.awaitMessages({
@@ -309,7 +314,7 @@ export namespace Inquirer {
 
     if (options.deleteRetrievedMessages) {
       for await (const [, message] of messages) {
-        await message.delete();
+        if (message.deletable) await message.delete();
       }
     }
 

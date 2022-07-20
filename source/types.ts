@@ -1,5 +1,13 @@
-import type { Client as ClientJS } from "discord.js";
+import type {
+  CacheType,
+  Client as ClientJS,
+  Interaction,
+  InteractionResponseFields,
+} from "discord.js";
 import type { Client as ClientX } from "discordx";
+
+export type RepliableInteraction<Type extends CacheType | undefined = undefined> =
+  Interaction<Type> & InteractionResponseFields<Type>;
 
 /** Merge of the Discord.js and DiscordX client types. */
 export type MergeClient<T extends boolean = false> = ClientX & ClientJS<T>;

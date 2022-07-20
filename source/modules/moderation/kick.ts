@@ -17,6 +17,7 @@ import {
   SlashCommand,
   SlashCommandOption,
 } from "../../utils/localization";
+import { isTrustedMediaURL } from "../../utils/url";
 
 @Discord()
 export class ModerationKick {
@@ -40,6 +41,12 @@ export class ModerationKick {
     })
     reason: string | null = null,
 
+    @SlashCommandOption("KICK.OPTIONS.PROOFS.NAME", "KICK.OPTIONS.PROOFS.DESCRIPTION", {
+      type: "STRING",
+      required: false,
+    })
+    proofs: string | undefined,
+
     @SlashCommandOption("KICK.OPTIONS.SILENT.NAME", "KICK.OPTIONS.SILENT.DESCRIPTION", {
       type: "BOOLEAN",
       required: false,
@@ -53,6 +60,17 @@ export class ModerationKick {
     }
 
     const LL = L[getPreferredLocaleFromInteraction(interaction)];
+
+    const proofsArray: string[] = [];
+
+    if (proofs) {
+      proofsArray.push(...proofs.split(","));
+
+      if (proofsArray.some(proof => !isTrustedMediaURL(proof))) {
+        await interaction.editReply(LL.ERRORS.NOT_TRUSTED_URL());
+        return;
+      }
+    }
 
     const authorMember = await DiscordApiTypes.fromGuildMember(
       interaction.member as GuildMember,

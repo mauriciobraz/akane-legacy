@@ -53,6 +53,7 @@ model Punishment {
   time   DateTime?
   type   PunishmentType
   reason String
+  proofs String[]
 }
 
 enum PunishmentType {

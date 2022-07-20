@@ -17,6 +17,7 @@ import {
   SlashCommand,
   SlashCommandOption,
 } from "../../utils/localization";
+import { isTrustedMediaURL } from "../../utils/url";
 
 @Discord()
 export class ModerationBan {
@@ -34,37 +35,24 @@ export class ModerationBan {
     })
     member: GuildMember,
 
-    // @SlashCommandOption({
-    //   name: "BAN.OPTIONS.REASON.NAME",
-    //   description: "BAN.OPTIONS.REASON.DESCRIPTION",
-    //   type: "STRING",
-    //   required: false,
-    // })
     @SlashCommandOption("BAN.OPTIONS.REASON.NAME", "BAN.OPTIONS.REASON.DESCRIPTION", {
       type: "STRING",
       required: false,
     })
     reason: string | null = null,
 
-    // @SlashCommandOption({
-    //   name: "BAN.OPTIONS.SILENT.NAME",
-    //   description: "BAN.OPTIONS.SILENT.DESCRIPTION",
-    //   type: "BOOLEAN",
-    //   required: false,
-    // })
+    @SlashCommandOption("KICK.OPTIONS.PROOFS.NAME", "KICK.OPTIONS.PROOFS.DESCRIPTION", {
+      type: "STRING",
+      required: false,
+    })
+    proofs: string | undefined,
+
     @SlashCommandOption("BAN.OPTIONS.SILENT.NAME", "BAN.OPTIONS.SILENT.DESCRIPTION", {
       type: "BOOLEAN",
       required: false,
     })
     silent: boolean = false,
 
-    // @SlashCommandOption({
-    //   name: "BAN.OPTIONS.TIME.NAME",
-    //   description: "BAN.OPTIONS.TIME.DESCRIPTION",
-    //   type: "NUMBER",
-    //   required: false,
-    //   minValue: 1,
-    // })
     @SlashCommandOption("BAN.OPTIONS.TIME.NAME", "BAN.OPTIONS.TIME.DESCRIPTION", {
       type: "NUMBER",
       required: false,
@@ -78,6 +66,17 @@ export class ModerationBan {
     }
 
     const LL = L[getPreferredLocaleFromInteraction(interaction)];
+
+    const proofsArray: string[] = [];
+
+    if (proofs) {
+      proofsArray.push(...proofs.split(","));
+
+      if (proofsArray.some(proof => !isTrustedMediaURL(proof))) {
+        await interaction.editReply(LL.ERRORS.NOT_TRUSTED_URL());
+        return;
+      }
+    }
 
     const authorMember = await DiscordApiTypes.fromGuildMember(
       interaction.member as GuildMember,

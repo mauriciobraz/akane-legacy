@@ -1,4 +1,5 @@
 import Container from "typedi";
+import { PrismaClient } from "@prisma/client";
 import {
   CommandInteraction,
   GuildMember,
@@ -7,7 +8,6 @@ import {
   MessageEmbed,
 } from "discord.js";
 import { Discord, Guard } from "discordx";
-import { PrismaClient } from "@prisma/client";
 
 import L from "../../locales/i18n-node";
 import { GuildGuards } from "../../guards/guild";
@@ -16,6 +16,7 @@ import {
   SlashCommand,
   SlashCommandOption,
 } from "../../utils/localization";
+import { isTrustedMediaURL } from "../../utils/url";
 
 @Discord()
 export class ModerationWarn {
@@ -38,6 +39,12 @@ export class ModerationWarn {
     })
     reason: string,
 
+    @SlashCommandOption("WARN.OPTIONS.PROOFS.NAME", "WARN.OPTIONS.PROOFS.DESCRIPTION", {
+      type: "STRING",
+      required: false,
+    })
+    proofs: string | undefined,
+
     @SlashCommandOption("WARN.OPTIONS.SILENT.NAME", "WARN.OPTIONS.SILENT.DESCRIPTION", {
       type: "BOOLEAN",
       required: false,
@@ -51,6 +58,17 @@ export class ModerationWarn {
     }
 
     const LL = L[getPreferredLocaleFromInteraction(interaction)];
+
+    const proofsArray: string[] = [];
+
+    if (proofs) {
+      proofsArray.push(...proofs.split(","));
+
+      if (proofsArray.some(proof => !isTrustedMediaURL(proof))) {
+        await interaction.editReply(LL.ERRORS.NOT_TRUSTED_URL());
+        return;
+      }
+    }
 
     const guild = await this.prisma.guild.upsert({
       where: { guildId: interaction.guildId },
@@ -83,6 +101,7 @@ export class ModerationWarn {
         guildId: guild.id,
         type: "WARN",
         reason,
+        proofs: proofsArray,
       },
     });
 

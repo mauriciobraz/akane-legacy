@@ -1,14 +1,15 @@
-import type { CommandInteraction, GuildMember } from "discord.js";
 import { Discord, Guard } from "discordx";
-import { GuildGuards } from "../../guards/guild";
+import type { CommandInteraction, GuildMember } from "discord.js";
 
 import L from "../../locales/i18n-node";
+import { GuildGuards } from "../../guards/guild";
 import { handleAutocompleteTime, type AutocompleteTime } from "../../utils/autocomplete-time";
 import {
   getPreferredLocaleFromInteraction,
   SlashCommand,
   SlashCommandOption,
 } from "../../utils/localization";
+import { isTrustedMediaURL } from "../../utils/url";
 
 @Discord()
 export class Mute {
@@ -30,6 +31,12 @@ export class Mute {
     })
     reason: string | undefined,
 
+    @SlashCommandOption("MUTE.OPTIONS.PROOFS.NAME", "MUTE.OPTIONS.PROOFS.DESCRIPTION", {
+      type: "STRING",
+      required: false,
+    })
+    proofs: string | undefined,
+
     @SlashCommandOption("MUTE.OPTIONS.TIME.NAME", "MUTE.OPTIONS.TIME.DESCRIPTION", {
       autocomplete: handleAutocompleteTime,
       required: false,
@@ -44,6 +51,17 @@ export class Mute {
     }
 
     const LL = L[getPreferredLocaleFromInteraction(interaction)];
+
+    const proofsArray: string[] = [];
+
+    if (proofs) {
+      proofsArray.push(...proofs.split(","));
+
+      if (proofsArray.some(proof => !isTrustedMediaURL(proof))) {
+        await interaction.editReply(LL.ERRORS.NOT_TRUSTED_URL());
+        return;
+      }
+    }
 
     await interaction.editReply({
       content: LL.ERRORS.NOT_IMPLEMENTED(),

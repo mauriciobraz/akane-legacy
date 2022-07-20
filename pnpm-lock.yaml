@@ -15,6 +15,7 @@ specifiers:
   pg: ^8.7.3
   prisma: ^4.0.0
   reflect-metadata: ^0.1.13
+  ts-dedent: ^2.2.0
   ts-node: 10.7.0
   ts-node-dev: ^2.0.0
   ts-toolbelt: ^9.6.0
@@ -38,6 +39,7 @@ dependencies:
   pg: 8.7.3
   prisma: 4.0.0
   reflect-metadata: 0.1.13
+  ts-dedent: 2.2.0
   tslib: 2.4.0
   tslog: 3.3.3
   typedi: 0.10.0
@@ -714,6 +716,11 @@ packages:
     resolution: {integrity: sha512-L0Orpi8qGpRG//Nd+H90vFB+3iHnue1zSSGmNOOCh1GLJ7rUKVwV2HvijphGQS2UmhUZewS9VgvxYIdgr+fG1A==}
     hasBin: true
     dev: true
+
+  /ts-dedent/2.2.0:
+    resolution: {integrity: sha512-q5W7tVM71e2xjHZTlgfTDoPF/SmqKG5hddq9SzR49CH2hayqRKJtQ4mtRlSxKaJlR/+9rEM+mnBHf7I2/BQcpQ==}
+    engines: {node: '>=6.10'}
+    dev: false
 
   /ts-mixer/6.0.1:
     resolution: {integrity: sha512-hvE+ZYXuINrx6Ei6D6hz+PTim0Uf++dYbK9FFifLNwQj+RwKquhQpn868yZsCtJYiclZF1u8l6WZxxKi+vv7Rg==}
