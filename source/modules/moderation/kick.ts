@@ -1,9 +1,11 @@
 import Container from "typedi";
 import { PrismaClient } from "@prisma/client";
 import {
-  MessageActionRow,
-  MessageButton,
-  MessageEmbed,
+  ActionRowBuilder,
+  ApplicationCommandOptionType,
+  ButtonBuilder,
+  ButtonStyle,
+  EmbedBuilder,
   type CommandInteraction,
   type GuildMember,
 } from "discord.js";
@@ -26,29 +28,29 @@ export class ModerationKick {
   @SlashCommand("KICK.NAME", "KICK.DESCRIPTION")
   @Guard(
     GuildGuards.inGuild(),
-    GuildGuards.hasPermissions(["KICK_MEMBERS"]),
-    GuildGuards.hasPermissions(["KICK_MEMBERS"], true)
+    GuildGuards.hasPermissions(["KickMembers"]),
+    GuildGuards.hasPermissions(["KickMembers"], true)
   )
   async handleKick(
     @SlashCommandOption("KICK.OPTIONS.USER.NAME", "KICK.OPTIONS.USER.DESCRIPTION", {
-      type: "USER",
+      type: ApplicationCommandOptionType.User,
     })
     member: GuildMember,
 
     @SlashCommandOption("KICK.OPTIONS.REASON.NAME", "KICK.OPTIONS.REASON.DESCRIPTION", {
-      type: "STRING",
+      type: ApplicationCommandOptionType.String,
       required: false,
     })
     reason: string | null = null,
 
     @SlashCommandOption("KICK.OPTIONS.PROOFS.NAME", "KICK.OPTIONS.PROOFS.DESCRIPTION", {
-      type: "STRING",
+      type: ApplicationCommandOptionType.String,
       required: false,
     })
     proofs: string | undefined,
 
     @SlashCommandOption("KICK.OPTIONS.SILENT.NAME", "KICK.OPTIONS.SILENT.DESCRIPTION", {
-      type: "BOOLEAN",
+      type: ApplicationCommandOptionType.Boolean,
       required: false,
     })
     silent: boolean = false,
@@ -80,7 +82,7 @@ export class ModerationKick {
     );
 
     const guildMe =
-      guild.me ||
+      guild.members.me ||
       (interaction.client.user && (await guild.members.fetch(interaction.client.user.id)));
 
     if (!guildMe) {
@@ -134,7 +136,7 @@ export class ModerationKick {
 
     if (!silent) {
       try {
-        const warnEmbed = new MessageEmbed()
+        const warnEmbed = new EmbedBuilder()
           .setTitle(
             LL.EMBEDS.MODERATION_KICK_TARGET_NOTIFICATION.TITLE({
               guild: guild.name,
@@ -150,13 +152,14 @@ export class ModerationKick {
             text: LL.EMBEDS.COMMON_FOOTER.CONTEST_PUNISHMENT(),
           });
 
-        const contestButton = new MessageButton()
+        const contestButton = new ButtonBuilder()
           .setLabel(LL.EMBEDS.COMMON_BUTTONS.CONTEST_PUNISHMENT())
           .setCustomId("contest-punishment")
-          .setStyle("SECONDARY")
+          .setStyle(ButtonStyle.Secondary)
           .setDisabled(true);
 
-        const actionRow = new MessageActionRow().addComponents(contestButton);
+        const actionRow = new ActionRowBuilder<ButtonBuilder>();
+        actionRow.addComponents(contestButton);
 
         await member.send({
           components: [actionRow],

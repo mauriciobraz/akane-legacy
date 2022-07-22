@@ -1,5 +1,5 @@
 import { Discord, Guard } from "discordx";
-import type { CommandInteraction, GuildMember } from "discord.js";
+import { ApplicationCommandOptionType, CommandInteraction, GuildMember } from "discord.js";
 
 import L from "../../locales/i18n-node";
 import { GuildGuards } from "../../guards/guild";
@@ -16,31 +16,31 @@ export class Mute {
   @SlashCommand("MUTE.NAME", "MUTE.DESCRIPTION")
   @Guard(
     GuildGuards.inGuild(),
-    GuildGuards.hasPermissions(["MUTE_MEMBERS"]),
-    GuildGuards.hasPermissions(["MUTE_MEMBERS"], true)
+    GuildGuards.hasPermissions(["MuteMembers"]),
+    GuildGuards.hasPermissions(["MuteMembers"], true)
   )
   async mute(
     @SlashCommandOption("MUTE.OPTIONS.USER.NAME", "MUTE.OPTIONS.USER.DESCRIPTION", {
-      type: "USER",
+      type: ApplicationCommandOptionType.User,
     })
     member: GuildMember,
 
     @SlashCommandOption("MUTE.OPTIONS.REASON.NAME", "MUTE.OPTIONS.REASON.DESCRIPTION", {
+      type: ApplicationCommandOptionType.String,
       required: false,
-      type: "STRING",
     })
     reason: string | undefined,
 
     @SlashCommandOption("MUTE.OPTIONS.PROOFS.NAME", "MUTE.OPTIONS.PROOFS.DESCRIPTION", {
-      type: "STRING",
+      type: ApplicationCommandOptionType.String,
       required: false,
     })
     proofs: string | undefined,
 
     @SlashCommandOption("MUTE.OPTIONS.TIME.NAME", "MUTE.OPTIONS.TIME.DESCRIPTION", {
-      autocomplete: handleAutocompleteTime,
+      type: ApplicationCommandOptionType.String,
       required: false,
-      type: "STRING",
+      autocomplete: handleAutocompleteTime,
     })
     time: AutocompleteTime,
 
@@ -71,13 +71,13 @@ export class Mute {
   @SlashCommand("UNMUTE.NAME", "UNMUTE.DESCRIPTION")
   async unmute(
     @SlashCommandOption("UNMUTE.OPTIONS.USER.NAME", "UNMUTE.OPTIONS.USER.DESCRIPTION", {
-      type: "USER",
+      type: ApplicationCommandOptionType.User,
     })
     member: GuildMember,
 
     @SlashCommandOption("UNMUTE.OPTIONS.REASON.NAME", "UNMUTE.OPTIONS.REASON.DESCRIPTION", {
       required: false,
-      type: "STRING",
+      type: ApplicationCommandOptionType.String,
     })
     reason: string | undefined,
 

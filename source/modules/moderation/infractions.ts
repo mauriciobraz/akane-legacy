@@ -1,18 +1,23 @@
 import Container from "typedi";
 import { Pagination, PaginationType } from "@discordx/pagination";
-import { MessageEmbed, type CommandInteraction, type GuildMember } from "discord.js";
+import { PrismaClient, Punishment, PunishmentType } from "@prisma/client";
+import {
+  ApplicationCommandOptionType,
+  EmbedBuilder,
+  type CommandInteraction,
+  type GuildMember,
+} from "discord.js";
 import { Discord, Guard } from "discordx";
 import { chunk } from "lodash";
-import { PrismaClient, Punishment, PunishmentType } from "@prisma/client";
 
 import L from "../../locales/i18n-node";
 import { GuildGuards } from "../../guards/guild";
+import type { TranslationFunctions } from "../../locales/i18n-types";
 import {
   getPreferredLocaleFromInteraction,
   SlashCommand,
   SlashCommandOption,
 } from "../../utils/localization";
-import type { TranslationFunctions } from "../../locales/i18n-types";
 
 interface GeneratePunishmentsPagesOptions {
   interaction: CommandInteraction<"cached" | "raw">;
@@ -37,12 +42,12 @@ export class ModerationInfractions {
   @SlashCommand("INFRACTIONS.NAME", "INFRACTIONS.DESCRIPTION")
   @Guard(
     GuildGuards.inGuild(),
-    GuildGuards.hasPermissions(["MODERATE_MEMBERS"]),
-    GuildGuards.hasPermissions(["MODERATE_MEMBERS"], true)
+    GuildGuards.hasPermissions(["ModerateMembers"]),
+    GuildGuards.hasPermissions(["ModerateMembers"], true)
   )
   async handleInfractions(
     @SlashCommandOption("INFRACTIONS.OPTIONS.USER.NAME", "INFRACTIONS.OPTIONS.USER.DESCRIPTION", {
-      type: "USER",
+      type: ApplicationCommandOptionType.User,
     })
     user: GuildMember,
 
@@ -96,7 +101,7 @@ export class ModerationInfractions {
    */
   private async _generatePagesForInfractions(options: GeneratePunishmentsPagesOptions) {
     const punishmentsChunks = chunk(options.punishments, options.chunkSize || 5);
-    const pages: MessageEmbed[] = [];
+    const pages: EmbedBuilder[] = [];
 
     const user = await options.interaction.guild?.members.fetch(options.userId);
 
@@ -133,7 +138,7 @@ export class ModerationInfractions {
         return `${PunishmentEmojis[punishment.type]} ${id} \`\`${timestamp}\`\` ${reason}`;
       });
 
-      const embed = new MessageEmbed()
+      const embed = new EmbedBuilder()
         .setDescription(punishmentsDescriptionArray.join("\n") + "\n\u200b")
         .setColor(0x141414)
         .setAuthor({

@@ -1,11 +1,13 @@
 import Container from "typedi";
 import { PrismaClient } from "@prisma/client";
 import {
-  CommandInteraction,
-  GuildMember,
-  MessageActionRow,
-  MessageButton,
-  MessageEmbed,
+  ActionRowBuilder,
+  ApplicationCommandOptionType,
+  ButtonBuilder,
+  ButtonStyle,
+  EmbedBuilder,
+  type CommandInteraction,
+  type GuildMember,
 } from "discord.js";
 import { Discord, Guard } from "discordx";
 
@@ -25,28 +27,28 @@ export class ModerationWarn {
   @SlashCommand("WARN.NAME", "WARN.DESCRIPTION")
   @Guard(
     GuildGuards.inGuild(),
-    GuildGuards.hasPermissions(["MUTE_MEMBERS"]),
-    GuildGuards.hasPermissions(["MUTE_MEMBERS"], true)
+    GuildGuards.hasPermissions(["MuteMembers"]),
+    GuildGuards.hasPermissions(["MuteMembers"], true)
   )
   async handleWarn(
     @SlashCommandOption("WARN.OPTIONS.USER.NAME", "WARN.OPTIONS.USER.DESCRIPTION", {
-      type: "USER",
+      type: ApplicationCommandOptionType.User,
     })
     member: GuildMember,
 
     @SlashCommandOption("WARN.OPTIONS.REASON.NAME", "WARN.OPTIONS.REASON.DESCRIPTION", {
-      type: "STRING",
+      type: ApplicationCommandOptionType.String,
     })
     reason: string,
 
     @SlashCommandOption("WARN.OPTIONS.PROOFS.NAME", "WARN.OPTIONS.PROOFS.DESCRIPTION", {
-      type: "STRING",
+      type: ApplicationCommandOptionType.String,
       required: false,
     })
     proofs: string | undefined,
 
     @SlashCommandOption("WARN.OPTIONS.SILENT.NAME", "WARN.OPTIONS.SILENT.DESCRIPTION", {
-      type: "BOOLEAN",
+      type: ApplicationCommandOptionType.Boolean,
       required: false,
     })
     silent: boolean = false,
@@ -111,7 +113,7 @@ export class ModerationWarn {
 
     if (!silent) {
       try {
-        const embed = new MessageEmbed()
+        const embed = new EmbedBuilder()
           .setTitle(
             LL.EMBEDS.MODERATION_WARN_TARGET_NOTIFICATION.TITLE({
               guild: guild.name,
@@ -128,13 +130,14 @@ export class ModerationWarn {
             text: LL.EMBEDS.COMMON_FOOTER.CONTEST_PUNISHMENT(),
           });
 
-        const contestButton = new MessageButton()
+        const contestButton = new ButtonBuilder()
           .setLabel(LL.EMBEDS.COMMON_BUTTONS.CONTEST_PUNISHMENT())
           .setCustomId("contest-punishment")
-          .setStyle("SECONDARY")
+          .setStyle(ButtonStyle.Secondary)
           .setDisabled(true);
 
-        const actionRow = new MessageActionRow().addComponents(contestButton);
+        const actionRow = new ActionRowBuilder<ButtonBuilder>();
+        actionRow.addComponents(contestButton);
 
         await member.send({
           components: [actionRow],

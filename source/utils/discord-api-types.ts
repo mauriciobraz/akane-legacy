@@ -1,5 +1,5 @@
-import { type Guild, GuildMember } from "discord.js";
-import type { APIInteractionGuildMember } from "discord-api-types/v9";
+import { GuildMember, type Guild } from "discord.js";
+import type { APIInteractionGuildMember } from "discord-api-types/v10";
 
 /** Removes API-specific properties from a discord.js related objects. */
 export namespace DiscordApiTypes {

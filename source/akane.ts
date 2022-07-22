@@ -1,6 +1,4 @@
-// TODO: Update to discord.js v14.
-
-import { Intents } from "discord.js";
+import { IntentsBitField } from "discord.js";
 import { Client, type ClientOptions } from "discordx";
 import { readdir } from "fs/promises";
 import { resolve } from "path";
@@ -20,7 +18,12 @@ export async function akaneConnect(): Promise<void> {
   }
 
   const client = new Client({
-    intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.GUILD_MEMBERS],
+    intents: [
+      IntentsBitField.Flags.Guilds,
+      IntentsBitField.Flags.GuildMembers,
+      IntentsBitField.Flags.GuildMessages,
+    ],
+    partials: [],
   });
 
   if (isDebuggerEnabled("DiscordJS")) {

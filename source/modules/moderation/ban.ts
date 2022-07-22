@@ -1,9 +1,11 @@
 import Container from "typedi";
 import { PrismaClient } from "@prisma/client";
 import {
-  MessageActionRow,
-  MessageButton,
-  MessageEmbed,
+  ActionRowBuilder,
+  ApplicationCommandOptionType,
+  ButtonBuilder,
+  ButtonStyle,
+  EmbedBuilder,
   type CommandInteraction,
   type GuildMember,
 } from "discord.js";
@@ -26,35 +28,35 @@ export class ModerationBan {
   @SlashCommand("BAN.NAME", "BAN.DESCRIPTION")
   @Guard(
     GuildGuards.inGuild(),
-    GuildGuards.hasPermissions(["BAN_MEMBERS"]),
-    GuildGuards.hasPermissions(["BAN_MEMBERS"], true)
+    GuildGuards.hasPermissions(["BanMembers"]),
+    GuildGuards.hasPermissions(["BanMembers"], true)
   )
   async handleBan(
     @SlashCommandOption("BAN.OPTIONS.USER.NAME", "BAN.OPTIONS.USER.DESCRIPTION", {
-      type: "USER",
+      type: ApplicationCommandOptionType.User,
     })
     member: GuildMember,
 
     @SlashCommandOption("BAN.OPTIONS.REASON.NAME", "BAN.OPTIONS.REASON.DESCRIPTION", {
-      type: "STRING",
+      type: ApplicationCommandOptionType.String,
       required: false,
     })
     reason: string | undefined,
 
     @SlashCommandOption("KICK.OPTIONS.PROOFS.NAME", "KICK.OPTIONS.PROOFS.DESCRIPTION", {
-      type: "STRING",
+      type: ApplicationCommandOptionType.String,
       required: false,
     })
     proofs: string | undefined,
 
     @SlashCommandOption("BAN.OPTIONS.SILENT.NAME", "BAN.OPTIONS.SILENT.DESCRIPTION", {
-      type: "BOOLEAN",
+      type: ApplicationCommandOptionType.Boolean,
       required: false,
     })
     silent: boolean = false,
 
     @SlashCommandOption("BAN.OPTIONS.TIME.NAME", "BAN.OPTIONS.TIME.DESCRIPTION", {
-      type: "NUMBER",
+      type: ApplicationCommandOptionType.Number,
       required: false,
     })
     time: number | undefined,
@@ -86,7 +88,7 @@ export class ModerationBan {
     );
 
     const guildMe =
-      guild.me ||
+      guild.members.me ||
       (interaction.client.user && (await guild.members.fetch(interaction.client.user.id)));
 
     if (!guildMe) {
@@ -140,7 +142,7 @@ export class ModerationBan {
 
     if (!silent) {
       try {
-        const banEmbed = new MessageEmbed()
+        const banEmbed = new EmbedBuilder()
           .setTitle(
             LL.EMBEDS.MODERATION_BAN_TARGET_NOTIFICATION.TITLE({
               guild: guild.name,
@@ -157,13 +159,14 @@ export class ModerationBan {
             text: LL.EMBEDS.COMMON_FOOTER.CONTEST_PUNISHMENT(),
           });
 
-        const contestButton = new MessageButton()
+        const contestButton = new ButtonBuilder()
           .setLabel(LL.EMBEDS.COMMON_BUTTONS.CONTEST_PUNISHMENT())
           .setCustomId("contest-punishment")
-          .setStyle("SECONDARY")
+          .setStyle(ButtonStyle.Secondary)
           .setDisabled(true);
 
-        const actionRow = new MessageActionRow().addComponents(contestButton);
+        const actionRow = new ActionRowBuilder<ButtonBuilder>();
+        actionRow.addComponents(contestButton);
 
         await member.send({
           components: [actionRow],
@@ -176,7 +179,6 @@ export class ModerationBan {
 
     await member.ban({
       reason: reason ?? LL.ERRORS.NO_REASON_PROVIDED(),
-      days: time,
     });
 
     await interaction.editReply(

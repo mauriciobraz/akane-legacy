@@ -8,7 +8,7 @@ import {
   type SlashOptionOptions,
 } from "discordx";
 import type { LocalizationMap } from "discord-api-types/v10";
-import type { Interaction } from "discord.js";
+import type { CommandInteraction, Interaction } from "discord.js";
 import type { Join } from "type-fest";
 import type { LocalizedString } from "typesafe-i18n";
 
@@ -126,7 +126,9 @@ export function getDiscordLocalizationMap(path: LocalizationKeyPath): Localizati
  * @param interaction The interaction to get the preferred locale from.
  * @returns The preferred locale of the interaction.
  */
-export function getPreferredLocaleFromInteraction(interaction: Interaction): Locales {
+export function getPreferredLocaleFromInteraction(
+  interaction: Interaction | CommandInteraction
+): Locales {
   if (Object.keys(loadedLocales).includes(interaction.locale)) {
     return interaction.locale as Locales;
   }

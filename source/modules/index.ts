@@ -1,5 +1,5 @@
 import Container from "typedi";
-import { MessageEmbed } from "discord.js";
+import { EmbedBuilder, InteractionType } from "discord.js";
 import { Discord, On, Once, type ArgsOf } from "discordx";
 import { Logger } from "tslog";
 
@@ -21,48 +21,22 @@ export class IndexModule {
     [interaction]: ArgsOf<"interactionCreate">,
     client: MergeClient<true>
   ): Promise<void> {
-    if (isDebuggerEnabled("DiscordJS"))
-      this.logger.info(
-        interaction.isCommand()
-          ? `APPLICATION_COMMAND/${interaction.commandId}/${interaction.commandName}`
-          : interaction.type,
-        {
-          userId: interaction.user.id,
-          guildId: interaction.guildId,
-          channelId: interaction.channelId,
-          interactionId: interaction.id,
-          interactionOptions: interaction.isCommand()
-            ? interaction.options.data.reduce(
-                (acc, curr) => ({ ...acc, [curr.name]: curr.value }),
-                {}
-              )
-            : null,
-        }
-      );
+    const __logPrefix = [
+      interaction.id,
+      interaction.type === InteractionType.ApplicationCommand
+        ? `${interaction.type}/${interaction.commandId}/${interaction.commandName}`
+        : interaction.type,
+    ];
+
+    if (isDebuggerEnabled("DiscordJS")) this.logger.info(...__logPrefix, "created");
 
     try {
       await client.executeInteraction(interaction);
     } catch (error) {
       // If the debugger is enabled, we'll log the error and reply to the user what happened.
-      if (isDebuggerEnabled("DiscordJS")) {
-        if (error instanceof Error && interaction.isRepliable()) {
-          const embed = new MessageEmbed()
-            .setTitle(error.name)
-            .setDescription(error.message)
-            .addFields([
-              {
-                name: "Stack Trace",
-                value: error.stack?.split("\n").join("\n\n") ?? "No stack trace available.",
-              },
-            ]);
-
-          await interaction.followUp({
-            embeds: [embed],
-          });
-        }
-
-        this.logger.error(error);
-      }
+      if (isDebuggerEnabled("DiscordJS")) this.logger.error(...__logPrefix, error);
+    } finally {
+      if (isDebuggerEnabled("DiscordJS")) this.logger.info(...__logPrefix, "finished");
     }
   }
 }

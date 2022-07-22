@@ -1,5 +1,5 @@
 import type { GuardFunction } from "discordx";
-import type { GuildMember, Interaction, PermissionString } from "discord.js";
+import type { CommandInteraction, GuildMember, Interaction, PermissionsString } from "discord.js";
 
 import L from "@locales/i18n-node";
 import { DiscordApiTypes } from "@utils/discord-api-types";
@@ -39,14 +39,14 @@ export namespace GuildGuards {
    * @returns A guard that checks if the user has the given permissions.
    */
   export function hasPermissions(
-    permissions: PermissionString[],
+    permissions: PermissionsString[],
     bot?: boolean,
     silent?: boolean
   ): GuardFunction<Interaction> {
     return async (interaction, _client, next) => {
       if (interaction.guild && interaction.member) {
         if (bot) {
-          if (interaction.guild.me?.permissions.has(permissions)) {
+          if (interaction.guild.members.me?.permissions.has(permissions)) {
             await next();
             return;
           }
@@ -108,7 +108,7 @@ export namespace GuildGuards {
     member: GuildMember,
     target: GuildMember,
     silent: boolean,
-    interaction: Interaction
+    interaction: Interaction | CommandInteraction
   ): Promise<boolean> {
     if (member.user.id === target.user.id) {
       if (!silent && interaction.isRepliable()) {

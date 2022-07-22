@@ -1,11 +1,14 @@
 import { randomUUID } from "crypto";
 import {
-  Collection,
-  MessageActionRow,
-  MessageButton,
-  MessageSelectMenu,
-  MessageSelectOptionData,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ChannelType,
+  ComponentType,
+  SelectMenuBuilder,
+  SelectMenuOptionBuilder,
+  type ButtonStyle,
   type CacheType,
+  type Collection,
   type Interaction,
   type InteractionResponseFields,
   type Message,
@@ -47,7 +50,7 @@ export namespace Inquirer {
     label: string;
 
     /** What style to use for the button. */
-    style: "PRIMARY" | "SECONDARY" | "SUCCESS" | "DANGER";
+    style: ButtonStyle;
 
     /** Emoji to display on the button. */
     emoji?: string;
@@ -81,7 +84,11 @@ export namespace Inquirer {
         ? interaction.channel
         : interaction.user.dmChannel || (await interaction.user.createDM());
 
-    if (!channel?.isText()) {
+    if (!channel) {
+      throw new Error("Could not found a channel to prompt the user with.");
+    }
+
+    if (![ChannelType.DM, ChannelType.GuildText].includes(channel.type)) {
       throw new Error("Cannot send message to non-text channel.");
     }
 
@@ -89,33 +96,27 @@ export namespace Inquirer {
       await interaction.deferReply({ ephemeral: true });
     }
 
+    const buttonActionRow = new ActionRowBuilder<ButtonBuilder>();
+
     const buttons = options.choices.map(choice => {
-      const button = new MessageButton()
+      const button = new ButtonBuilder()
         .setLabel(choice.label)
         .setStyle(choice.style)
         .setCustomId(`${uuid}${IdSeparator}${choice.id}`);
-
-      if (choice.emoji) button.setEmoji(choice.emoji);
+      choice.emoji && button.setEmoji(choice.emoji);
 
       return button;
     });
 
-    const actionRow = new MessageActionRow().addComponents(buttons);
+    buttonActionRow.addComponents(buttons);
 
-    const message = (
+    const message =
       options.context === Context.Guild
-        ? await interaction.editReply({
-            ...options.messageOptions,
-            components: [actionRow],
-          })
-        : await channel.send({
-            ...options.messageOptions,
-            components: [actionRow],
-          })
-    ) as Message<boolean>;
+        ? await interaction.editReply({ ...options.messageOptions, components: [buttonActionRow] })
+        : await channel.send({ ...options.messageOptions, components: [buttonActionRow] });
 
     const answer = await channel.awaitMessageComponent({
-      componentType: "BUTTON",
+      componentType: ComponentType.Button,
       filter: component =>
         component.customId.startsWith(`${uuid}${IdSeparator}`) &&
         component.user.id === interaction.user.id,
@@ -124,17 +125,24 @@ export namespace Inquirer {
     await answer.deferUpdate();
 
     if (options.postAnswerMessage) {
+      let updatedButtons: ButtonBuilder[] = [];
+
       if (options.setButtonsDisabled) {
-        buttons.forEach(button => button.setDisabled(true));
+        updatedButtons = updatedButtons.map(button => {
+          return ButtonBuilder.from(button).setDisabled(true);
+        });
       }
+
+      const updatedButtonsActionRow = new ActionRowBuilder<ButtonBuilder>();
+      updatedButtonsActionRow.addComponents(updatedButtons);
 
       options.context === Context.Guild
         ? await interaction.editReply({
-            components: [new MessageActionRow().addComponents(buttons)],
+            components: [updatedButtonsActionRow],
             content: options.postAnswerMessage,
           })
         : await message.edit({
-            components: [new MessageActionRow().addComponents(buttons)],
+            components: [updatedButtonsActionRow],
             content: options.postAnswerMessage,
           });
     } else {
@@ -189,7 +197,11 @@ export namespace Inquirer {
         ? interaction.channel
         : interaction.user.dmChannel || (await interaction.user.createDM());
 
-    if (!channel?.isText()) {
+    if (!channel) {
+      throw new Error("Could not found a channel to prompt the user with.");
+    }
+
+    if (![ChannelType.DM, ChannelType.GuildText].includes(channel?.type)) {
       throw new Error("Cannot send message to non-text channel.");
     }
 
@@ -197,53 +209,60 @@ export namespace Inquirer {
       await interaction.deferReply({ ephemeral: true });
     }
 
-    const opts = options.choices.map(
-      (choice): MessageSelectOptionData => ({
-        label: choice.label,
-        value: choice.id.toString(),
-        description: choice.description,
-        emoji: choice.emoji,
-      })
-    );
+    const opts = options.choices.map(choice => {
+      const optionBuilder = new SelectMenuOptionBuilder()
+        .setLabel(choice.label)
+        .setValue(choice.id.toString());
 
-    const selectMenu = new MessageSelectMenu()
+      choice.emoji && optionBuilder.setEmoji(choice.emoji);
+      choice.description && optionBuilder.setDescription(choice.description);
+
+      return optionBuilder;
+    });
+
+    const selectMenu = new SelectMenuBuilder()
       .setPlaceholder(options.placeholder)
       .setCustomId(uuid)
       .setOptions(opts);
 
-    const actionRow = new MessageActionRow().addComponents(selectMenu);
+    const selectMenuActionRow = new ActionRowBuilder<SelectMenuBuilder>().addComponents(selectMenu);
 
     const message = (
       options.context === Context.Guild
         ? await interaction.editReply({
             ...options.messageOptions,
-            components: [actionRow],
+            components: [selectMenuActionRow],
           })
         : await channel.send({
             ...options.messageOptions,
-            components: [actionRow],
+            components: [selectMenuActionRow],
           })
     ) as Message<boolean>;
 
     const answer = await channel.awaitMessageComponent({
-      componentType: "SELECT_MENU",
+      componentType: ComponentType.SelectMenu,
       filter: component => component.customId === uuid && component.user.id === interaction.user.id,
     });
 
     await answer.deferUpdate();
 
-    if (options.postAnswerMessage) {
-      if (options.setDisabledWhenDone) {
-        selectMenu.setDisabled(true);
-      }
+    let updatedSelectMenu: SelectMenuBuilder = selectMenu;
 
+    if (options.setDisabledWhenDone) {
+      updatedSelectMenu = SelectMenuBuilder.from(selectMenu).setDisabled(true);
+    }
+
+    const updatedActionRow = new ActionRowBuilder<SelectMenuBuilder>();
+    updatedActionRow.addComponents(updatedSelectMenu);
+
+    if (options.postAnswerMessage) {
       options.context === Context.Guild
         ? await interaction.editReply({
-            components: [new MessageActionRow().addComponents(selectMenu)],
+            components: [updatedActionRow],
             content: options.postAnswerMessage,
           })
         : await message.edit({
-            components: [new MessageActionRow().addComponents(selectMenu)],
+            components: [updatedActionRow],
             content: options.postAnswerMessage,
           });
     } else {
@@ -252,7 +271,7 @@ export namespace Inquirer {
           selectMenu.setDisabled(true);
 
           await interaction.editReply({
-            components: [new MessageActionRow().addComponents(selectMenu)],
+            components: [updatedActionRow],
           });
         }
       } else {
@@ -292,7 +311,11 @@ export namespace Inquirer {
         ? interaction.channel
         : interaction.user.dmChannel || (await interaction.user.createDM());
 
-    if (!channel?.isText()) {
+    if (!channel) {
+      throw new Error("Could not found a channel to prompt the user with.");
+    }
+
+    if (![ChannelType.DM, ChannelType.GuildText].includes(channel?.type)) {
       throw new Error("Cannot send message to non-text channel.");
     }
 
