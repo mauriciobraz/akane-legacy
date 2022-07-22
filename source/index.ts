@@ -1,10 +1,10 @@
 import "reflect-metadata";
 import "dotenv/config";
 
-import Container from "typedi";
+import Container, { Inject, Service } from "typedi";
 import { PrismaClient } from "@prisma/client";
 import { Logger } from "tslog";
-import { DIService } from "discordx";
+import { DIService, typeDiDependencyRegistryEngine } from "discordx";
 
 import { akaneConnect } from "./akane";
 import { initFormatters } from "./locales/formatters";
@@ -46,7 +46,7 @@ async function main(): Promise<void> {
   Container.set(Logger, logger);
   Container.set(PrismaClient, prisma);
 
-  DIService.container = Container;
+  DIService.engine = typeDiDependencyRegistryEngine.setInjector(Container).setService(Service);
 
   await prisma.$connect();
   await akaneConnect();

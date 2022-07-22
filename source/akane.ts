@@ -36,7 +36,7 @@ export async function akaneConnect(): Promise<void> {
   }
 
   if (process.env.NODE_ENV === "development") {
-    logger.info("Starting Discord client in development mode.");
+    if (isDebuggerEnabled("DiscordJS")) logger.info("Starting Discord client in development mode.");
 
     (client.options as ClientOptions).botGuilds = [
       async client => (await client.guilds.fetch()).map(guild => guild.id),

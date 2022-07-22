@@ -10,6 +10,7 @@ import {
   SlashCommandOption,
 } from "../../utils/localization";
 import { isTrustedMediaURL } from "../../utils/url";
+import { Loggable } from "@root/types";
 
 @Discord()
 export class Mute {
@@ -44,7 +45,7 @@ export class Mute {
     })
     time: AutocompleteTime,
 
-    interaction: CommandInteraction
+    interaction: Loggable<CommandInteraction>
   ): Promise<void> {
     if (!interaction.deferred) {
       await interaction.deferReply({ ephemeral: true });
@@ -55,12 +56,18 @@ export class Mute {
     const proofsArray: string[] = [];
 
     if (proofs) {
+      interaction.logger?.debug("Parsing proofs");
+
       proofsArray.push(...proofs.split(","));
 
       if (proofsArray.some(proof => !isTrustedMediaURL(proof))) {
+        interaction.logger?.debug("Invalid proof URL");
+
         await interaction.editReply(LL.ERRORS.NOT_TRUSTED_URL());
         return;
       }
+
+      interaction.logger?.debug("Proofs parsed");
     }
 
     await interaction.editReply({

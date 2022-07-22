@@ -1,16 +1,30 @@
 import type {
   CacheType,
-  Client as ClientJS,
+  Client,
+  CommandInteraction,
   Interaction,
   InteractionResponseFields,
 } from "discord.js";
 import type { Client as ClientX } from "discordx";
+import type { Logger } from "tslog";
 
-export type RepliableInteraction<Type extends CacheType | undefined = undefined> =
-  Interaction<Type> & InteractionResponseFields<Type>;
+type CleanLogger = Omit<
+  Logger,
+  | "attachTransport"
+  | "getChildLogger"
+  | "settings"
+  | "setSettings"
+  | "prettyError"
+  | "printPrettyLog"
+>;
+
+export type RepliableInteraction<Cached extends CacheType = CacheType> = Interaction<Cached> &
+  InteractionResponseFields<Cached>;
+
+export type Loggable<T extends object> = T & { readonly logger?: CleanLogger };
 
 /** Merge of the Discord.js and DiscordX client types. */
-export type MergeClient<T extends boolean = false> = ClientX & ClientJS<T>;
+export type MergeClient<T extends boolean = false> = ClientX & Client<T>;
 
 /** Loose autocomplete for a string type. Useful for typed generics. */
 export type LooseAutocomplete<T extends string> = T | Omit<string, T>;
