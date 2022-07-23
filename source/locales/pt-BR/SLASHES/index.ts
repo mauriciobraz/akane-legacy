@@ -117,6 +117,26 @@ const pt_BR_slashes: BaseTranslation = {
       },
     },
   },
+
+  TICKETS: {
+    GROUP_DESCRIPTION: "Comandos relacionados a tickets do servidor.",
+    GROUP_NAME: "tickets",
+
+    SETUP: {
+      DESCRIPTION: "Configura um sistema de tickets para este servidor.",
+      NAME: "configurar",
+      OPTIONS: {
+        CHANNEL: {
+          DESCRIPTION: "Canal que será utilizado para iniciar um ticket.",
+          NAME: "canal",
+        },
+        TICKET_TYPE: {
+          DESCRIPTION: "Tipo de ticket que será utilizado.",
+          NAME: "tipo",
+        },
+      },
+    },
+  },
 };
 
 export default pt_BR_slashes;

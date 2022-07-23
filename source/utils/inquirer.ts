@@ -3,6 +3,7 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ChannelType,
+  CommandInteraction,
   ComponentType,
   SelectMenuBuilder,
   SelectMenuOptionBuilder,
@@ -33,6 +34,9 @@ export namespace Inquirer {
 
     /** Context of the question. Defaults to `Context.Guild`. */
     context: Context;
+
+    /** Timeout for the question. Defaults to `1000 * 30`. */
+    timeout?: number;
   }
 
   export interface BaseValue {
@@ -40,8 +44,11 @@ export namespace Inquirer {
     id: string | number | boolean;
   }
 
-  type RepliableInteraction<Type extends CacheType | undefined = undefined> = Interaction<Type> &
-    InteractionResponseFields<Type>;
+  type RepliableInteraction<Cached extends CacheType = CacheType> = (
+    | Interaction<Cached>
+    | CommandInteraction<Cached>
+  ) &
+    InteractionResponseFields<Cached>;
 
   const IdSeparator = "&";
 
@@ -120,6 +127,7 @@ export namespace Inquirer {
       filter: component =>
         component.customId.startsWith(`${uuid}${IdSeparator}`) &&
         component.user.id === interaction.user.id,
+      time: options.timeout || 1000 * 30,
     });
 
     await answer.deferUpdate();
@@ -146,7 +154,7 @@ export namespace Inquirer {
             content: options.postAnswerMessage,
           });
     } else {
-      if (options.context === Context.Guild && message.deletable) {
+      if (options.context === Context.DM && message.deletable) {
         await message.delete();
       }
     }

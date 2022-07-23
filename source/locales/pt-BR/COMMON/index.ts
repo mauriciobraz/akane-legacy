@@ -35,6 +35,12 @@ const pt_BR_common: BaseTranslation = {
   MODERATION_WARN_SUCCESS_SILENT: "O usuário foi avisado e não foi notificado via MD.",
 
   MODERATION_MUTE_SUCCESS: "O usuário foi silenciado com sucesso.",
+
+  TICKETS_TYPE: {
+    CHANNEL: "Canais de texto. (Não suportado no momento)",
+    VOICE: "Canais de voz. (Não suportado no momento)",
+    THREAD: "Threads privadas. (requer nível 2 de boost)",
+  },
 };
 
 export default pt_BR_common;

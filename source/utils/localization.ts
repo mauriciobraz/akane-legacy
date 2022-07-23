@@ -38,7 +38,7 @@ export type LocalizationKeyPath = Join<
 /** Extra options for a slash command group. */
 export type SlashCommandGroupOptions = {
   root?: string;
-  markAllAsThisGroup?: boolean;
+  assignAllMethods?: boolean;
 };
 
 /** @internal */
@@ -55,6 +55,10 @@ type SlashOptionOptionsWithoutNamingFields = Omit<
 >;
 
 let defaultLocale: Locales = baseLocale;
+
+export function getDefaultLocale(): Locales {
+  return defaultLocale;
+}
 
 /**
  * Changes the locale used as default for slash commands-related localization.
@@ -198,7 +202,7 @@ export function SlashCommandGroup(
       ...getSharedNameAndDescription(name, description),
     })(target, key, descriptor);
 
-    if (options?.markAllAsThisGroup) {
+    if (options?.assignAllMethods) {
       SlashGroup(executeLocalizationPath(name))(target, key, descriptor);
     }
   };
