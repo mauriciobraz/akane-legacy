@@ -1,6 +1,5 @@
 import {
   ActionRowBuilder,
-  ButtonBuilder,
   ButtonInteraction,
   ButtonStyle,
   CommandInteraction,
@@ -13,7 +12,11 @@ import { Loggable, RepliableInteraction } from "@root/types";
 import { Context, Inquirer } from "@utils/inquirer";
 import { BaseTicketDriverOptions, TicketDriver, TicketDriverConfigureOptions } from "./interface";
 
-const UniqueId = "threads-driver";
+interface TicketItem {
+  name: string;
+  description: string;
+  emoji: string;
+}
 
 export class TicketThreadsDriver implements TicketDriver {
   constructor(public options: BaseTicketDriverOptions) {}
@@ -28,8 +31,7 @@ export class TicketThreadsDriver implements TicketDriver {
           { id: Context.DM, style: ButtonStyle.Secondary, label: "Privado", emoji: "🕵️" },
         ],
         messageOptions: {
-          content:
-            "Aonde você quer que as perguntas sejam feitas? Aqui neste canal ou no seu privado?",
+          content: "Onde você quer que seja feita as perguntas?",
         },
       }
     );
@@ -38,10 +40,11 @@ export class TicketThreadsDriver implements TicketDriver {
 
     if (preferredContext === Context.DM) {
       isDMOpen = await options.interaction.user
-        .send("As perguntas a partir de agora serão feitas aqui, fique atento e não feche a MD.")
+        .send("As perguntas a partir de agora serão feitas aqui, fique atento.")
         .then(() => true)
         .catch(() => false);
 
+      // Try to send a DM message to the user and if it fails, ask again only one time.
       if (!isDMOpen) {
         const timeout = 1000 * 20;
         const timeoutDate = new Date(Date.now() + timeout);
@@ -61,12 +64,7 @@ export class TicketThreadsDriver implements TicketDriver {
             timeout,
             context: Context.Guild,
             choices: [
-              {
-                id: Context.Guild,
-                style: ButtonStyle.Primary,
-                label: "Servidor",
-                emoji: "🏢",
-              },
+              { id: Context.Guild, style: ButtonStyle.Primary, label: "Servidor", emoji: "🏢" },
             ],
             messageOptions: {
               content: `Seu privado está fechado, não consigo enviar mensagens. Tentando novamente em ${time(
@@ -77,6 +75,7 @@ export class TicketThreadsDriver implements TicketDriver {
           }
         ).catch((error: Error) => error);
 
+        // Ask again if the user didn't open the DM in the time or throw the error.
         if (newPreferredContext instanceof Error) {
           options.interaction.logger?.info(newPreferredContext.name, newPreferredContext.message);
 
@@ -85,9 +84,7 @@ export class TicketThreadsDriver implements TicketDriver {
             newPreferredContext.message.endsWith("time")
           ) {
             isDMOpen = await options.interaction.user
-              .send(
-                "As perguntas a partir de agora serão feitas aqui, fique atento e não feche a MD."
-              )
+              .send("As perguntas a partir de agora serão feitas aqui, fique atento.")
               .then(() => true)
               .catch(() => false);
 
@@ -106,51 +103,38 @@ export class TicketThreadsDriver implements TicketDriver {
       }
     }
 
-    let ticketOptions = [];
-    let finished = false;
+    let isFinished = false;
+    let retrievedTopics = [];
 
-    while (!finished) {
-      ticketOptions.push(await this._askTicketOptions(options.interaction, preferredContext));
+    while (!isFinished) {
+      retrievedTopics.push(await this._askTicketItem(options.interaction, preferredContext));
 
-      const continueOrFinish = await Inquirer.askUsingButtons(
-        options.interaction as RepliableInteraction,
-        {
-          context: preferredContext,
-          choices: [
-            {
-              id: "Continue" as const,
-              style: ButtonStyle.Primary,
-              label: "Adicionar mais",
-              emoji: "➕",
-            },
-            {
-              id: "Finish" as const,
-              style: ButtonStyle.Secondary,
-              label: "Finalizar",
-              emoji: "🏁",
-            },
-          ],
-          messageOptions: {},
-        }
-      );
-
-      finished = continueOrFinish === "Finish";
+      isFinished = await Inquirer.askUsingButtons(options.interaction as RepliableInteraction, {
+        context: preferredContext,
+        choices: [
+          { id: false, style: ButtonStyle.Success, label: "Sim", emoji: "✅" },
+          { id: true, style: ButtonStyle.Danger, label: "Não", emoji: "❌" },
+        ],
+        messageOptions: {
+          content: "Deseja adicionar mais um tópico?",
+        },
+      });
     }
 
     await options.interaction.editReply({
       components: [],
       embeds: [],
-      content: `Configuração finalizada com ${ticketOptions.length} seções de ticket.`,
+      content: `Configuração finalizada com ${retrievedTopics.length} seções de ticket.`,
     });
 
     const selectMenuBuilder = new SelectMenuBuilder()
-      .setPlaceholder("Selecione uma seção de ticket")
+      .setPlaceholder("Selecionar tópico")
       .setOptions(
-        ticketOptions.map(ticketOption =>
+        retrievedTopics.map(ticketOption =>
           new SelectMenuOptionBuilder()
-            .setLabel(ticketOption.name.content)
-            .setDescription(ticketOption.description.content)
-            .setEmoji(ticketOption.emoji.content)
+            .setLabel(ticketOption.name)
+            .setDescription(ticketOption.description)
+            .setEmoji(ticketOption.emoji)
         )
       );
 
@@ -167,14 +151,17 @@ export class TicketThreadsDriver implements TicketDriver {
     throw new Error("Method not implemented.");
   }
 
-  private async _askTicketOptions(interaction: CommandInteraction, context: Inquirer.Context) {
+  private async _askTicketItem(
+    interaction: CommandInteraction,
+    context: Inquirer.Context
+  ): Promise<TicketItem> {
     const chosenName = await Inquirer.askMessages(interaction as RepliableInteraction, {
       context,
       deleteRetrievedMessages: context === Context.Guild,
       messageOptions: {
         components: [],
         embeds: [],
-        content: "Qual é o nome desta seção de ticket?",
+        content: "Digite o nome deste tópico (ex. denúncias).",
       },
       maxMessages: 1,
     });
@@ -185,7 +172,8 @@ export class TicketThreadsDriver implements TicketDriver {
       messageOptions: {
         components: [],
         embeds: [],
-        content: "Descreva brevemente para que serve esta seção de ticket.",
+        content:
+          "Digite a descrição deste tópico (ex. denuncie membros que infrinjam as regras...).",
       },
       maxMessages: 1,
     });
@@ -196,15 +184,15 @@ export class TicketThreadsDriver implements TicketDriver {
       messageOptions: {
         components: [],
         embeds: [],
-        content: "Escolha um emoji para identificar esta seção de ticket.",
+        content: "Escolha um emoji para identificar este tópico (ex. 📝).",
       },
       maxMessages: 1,
     });
 
     return {
-      name: chosenName.first()!,
-      description: chosenDescription.first()!,
-      emoji: chosenEmoji.first()!,
+      name: chosenName.first()!.content,
+      description: chosenDescription.first()!.content,
+      emoji: chosenEmoji.first()!.content,
     };
   }
 }
